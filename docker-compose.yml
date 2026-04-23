@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  db-pacientes:
+    image: postgres:16-alpine
+    container_name: ms-pacientes-db
+    environment:
+      POSTGRES_DB: pacientes_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+
+  db-atencion:
+    image: postgres:16-alpine
+    container_name: ms-atencion-db
+    environment:
+      POSTGRES_DB: atencion_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+
+  db-recetas:
+    image: postgres:16-alpine
+    container_name: ms-recetas-db
+    environment:
+      POSTGRES_DB: recetas_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5434:5432"
+
+  db-farmacia:
+    image: postgres:16-alpine
+    container_name: ms-farmacia-db
+    environment:
+      POSTGRES_DB: farmacia_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5435:5432"
+
+  db-cobros:
+    image: postgres:16-alpine
+    container_name: ms-cobros-db
+    environment:
+      POSTGRES_DB: cobros_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5436:5432"
+
+  db-notificaciones:
+    image: postgres:16-alpine
+    container_name: ms-notificaciones-db
+    environment:
+      POSTGRES_DB: notificaciones_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5437:5432"
