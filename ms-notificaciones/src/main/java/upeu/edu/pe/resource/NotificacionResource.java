@@ -1,5 +1,6 @@
 package upeu.edu.pe.resource;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -13,17 +14,20 @@ import java.util.List;
 public class NotificacionResource {
 
     @GET
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public List<Notificacion> listar() {
         return Notificacion.listAll();
     }
 
     @GET
     @Path("/paciente/{pacienteId}")
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "PACIENTE"})
     public List<Notificacion> findByPaciente(@PathParam("pacienteId") Long pacienteId) {
         return Notificacion.list("pacienteId = ?1", pacienteId);
     }
 
     @POST
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public Response crear(Notificacion notificacion) {
         notificacion.fechaEnvio = LocalDateTime.now();
         notificacion.persist();

@@ -1,5 +1,6 @@
 package upeu.edu.pe.resource;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -12,23 +13,27 @@ import java.util.List;
 public class CitaResource {
 
     @GET
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public List<Cita> listar() {
         return Cita.listAll();
     }
 
     @GET
     @Path("/paciente/{pacienteId}")
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
     public List<Cita> findByPaciente(@PathParam("pacienteId") Long pacienteId) {
         return Cita.findByPaciente(pacienteId);
     }
 
     @GET
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
     public Cita buscar(@PathParam("id") Long id) {
         return Cita.findById(id);
     }
 
     @POST
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public Response crear(Cita cita) {
         cita.persist();
         return Response.status(Response.Status.CREATED).entity(cita).build();
@@ -36,6 +41,7 @@ public class CitaResource {
 
     @PUT
     @Path("/{id}")
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public Response actualizar(@PathParam("id") Long id, Cita citaActualizado) {
         Cita cita = Cita.findById(id);
         if (cita == null) {
