@@ -34,11 +34,30 @@ public class Usuario extends PanacheEntity {
     @Column(nullable = false)
     public Boolean activo = true;
 
+    @Column
+    public String nombres;
+
+    @Column
+    public String apellidos;
+
+    @Column
+    public String especialidad;
+
+    @Column
+    public String dni;
+
+    @Column
+    public String telefono;
+
     public static Usuario findByUsername(String username) {
         return find("username", username).firstResult();
     }
 
     public static Usuario findByEmail(String email) {
         return find("email", email).firstResult();
+    }
+
+    public static List<Usuario> findByRole(String rol) {
+        return list("roles ?1 and activo = true", Rol.valueOf(rol));
     }
 }

@@ -5,5 +5,6 @@ public enum Rol {
     DOCTOR,
     FARMACEUTICO,
     ATENCION_CLIENTE,
+    CAJERO,
     ADMIN
 }

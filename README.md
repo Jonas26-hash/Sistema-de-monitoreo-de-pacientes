@@ -139,10 +139,11 @@ Los archivos de configuracion estan en `central-config/config-properties/`:
 
 ## Roles del Sistema
 
-| Rol | Descripcion |
-|-----|-------------|
-| PACIENTE | Puede ver su perfil, agendar citas, ver recetas |
-| DOCTOR | Puede ver historial, gestionar citas, generar recetas |
-| FARMACEUTICO | Puede gestionar inventario, dispensar medicamentos |
-| ATENCION_CLIENTE | Puede ayudar con datos de pacientes, gestionar citas |
-| ADMIN | Acceso total al sistema |
+| Rol              | Descripcion                                           |
+|------------------|-------------------------------------------------------|
+| PACIENTE         | Puede ver su perfil, agendar citas, ver recetas       |
+| DOCTOR           | Puede ver historial, gestionar citas, generar recetas |
+| FARMACEUTICO     | Puede gestionar inventario, dispensar medicamentos    |
+| ATENCION_CLIENTE | Puede ayudar con datos de pacientes, gestionar citas  |
+| CAJERO           | Puede procesar pagos de consultas                     |
+| ADMIN            | Acceso total al sistema                               |
