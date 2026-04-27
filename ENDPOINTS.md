@@ -317,7 +317,7 @@ curl -X POST http://localhost:8086/notificaciones \
 | Servicio | Puerto |
 |----------|--------|
 | Config Server | 8888 |
-| Eureka Server | 8761 |
+| Registry Server | 8761 |
 | ms-pacientes | 8081 |
 | ms-atencion | 8082 |
 | ms-recetas | 8083 |
