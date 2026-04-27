@@ -44,6 +44,29 @@ public class AuthResource {
     @Transactional
     @RolesAllowed("ADMIN")
     public Response register(RegisterRequest request) {
+        // Si es el primer usuario del sistema, permitir sin token
+        if (Usuario.count() == 0) {
+            return registrarUsuario(request);
+        }
+
+        // Si ya hay usuarios, se requiere token ADMIN (manejado por @RolesAllowed)
+        return registrarUsuario(request);
+    }
+
+    @POST
+    @Path("/register-init")
+    @Transactional
+    public Response registerBootstrap(RegisterRequest request) {
+        // Solo permitir si es el primer usuario
+        if (Usuario.count() > 0) {
+            return Response.status(Response.Status.FORBIDDEN)
+                .entity("{\"error\":\"Solo para inicializar sistema\"}")
+                .build();
+        }
+        return registrarUsuario(request);
+    }
+
+    private Response registrarUsuario(RegisterRequest request) {
         if (Usuario.findByUsername(request.username) != null) {
             return Response.status(Response.Status.CONFLICT)
                 .entity("{\"error\":\"Usuario ya existe\"}")
