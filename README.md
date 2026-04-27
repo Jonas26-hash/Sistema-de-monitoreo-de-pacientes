@@ -56,10 +56,10 @@ docker-compose up -d
 
 ```bash
 # Config Server (Puerto 8888)
-cd ms-config-server && mvn spring-boot:run
+cd ms-config-server && .\mvnw.cmd spring-boot:run
 
 # Eureka Server (Puerto 8761)
-cd ms-registry-server && mvn spring-boot:run
+cd ms-registry-server && .\mvnw.cmd spring-boot:run
 ```
 
 ### 3. Iniciar microservicios
@@ -89,6 +89,7 @@ cd ms-notificaciones && ./mvnw quarkus:dev
 ```bash
 cd api-gateway && ./mvnw quarkus:dev
 ```
+
 
 ## Endpoints Principales
 
