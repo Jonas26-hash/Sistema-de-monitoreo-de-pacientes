@@ -2,6 +2,5 @@
 .git
 *.md
 README*
-docker-compose*.yml
 target
 *.log
