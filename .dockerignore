@@ -2,6 +2,8 @@
 .git
 *.md
 README*
-docker-compose*.yml
 target
 *.log
+.DS_Store
+*.iml
+.idea

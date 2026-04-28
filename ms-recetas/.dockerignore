@@ -1,6 +1,7 @@
-# Ignorar target (build local)
-target/
-
-# Pero incluir código fuente
-!src/
-!pom.xml
+# Ignorar archivos innecesarios para Docker
+.git
+*.md
+README*
+docker-compose*.yml
+target
+*.log
