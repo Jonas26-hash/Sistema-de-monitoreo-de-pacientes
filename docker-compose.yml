@@ -99,7 +99,7 @@ services:
   ms-pacientes:
     build:
       context: ./ms-pacientes
-      dockerfile: src/main/docker/Dockerfile.jvm
+      dockerfile: Dockerfile
     container_name: ms-pacientes
     ports:
       - "8081:8080"
@@ -116,7 +116,7 @@ services:
   ms-atencion:
     build:
       context: ./ms-atencion
-      dockerfile: src/main/docker/Dockerfile.jvm
+      dockerfile: Dockerfile
     container_name: ms-atencion
     ports:
       - "8082:8080"
@@ -133,7 +133,7 @@ services:
   ms-recetas:
     build:
       context: ./ms-recetas
-      dockerfile: src/main/docker/Dockerfile.jvm
+      dockerfile: Dockerfile
     container_name: ms-recetas
     ports:
       - "8083:8080"
@@ -150,7 +150,7 @@ services:
   ms-farmacia:
     build:
       context: ./ms-farmacia
-      dockerfile: src/main/docker/Dockerfile.jvm
+      dockerfile: Dockerfile
     container_name: ms-farmacia
     ports:
       - "8084:8080"
@@ -167,7 +167,7 @@ services:
   ms-cobros:
     build:
       context: ./ms-cobros
-      dockerfile: src/main/docker/Dockerfile.jvm
+      dockerfile: Dockerfile
     container_name: ms-cobros
     ports:
       - "8085:8080"
@@ -184,7 +184,7 @@ services:
   ms-notificaciones:
     build:
       context: ./ms-notificaciones
-      dockerfile: src/main/docker/Dockerfile.jvm
+      dockerfile: Dockerfile
     container_name: ms-notificaciones
     ports:
       - "8086:8080"
