@@ -46,48 +46,47 @@
 
 ## Ejecucion
 
-### 1. Iniciar bases de datos
+### Opcion 1: Docker Compose (RECOMENDADO - Todo automagico)
 
 ```bash
+# Levantar todos los servicios (BDs + Infraestructura + Microservicios + API Gateway)
 docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Ver servicios corriendo
+docker-compose ps
 ```
 
-### 2. Iniciar servicios de infraestructura
+**Tiempo estimado:** 10-15 minutos (primer build)
+
+### Opcion 2: Desarrollo local (sin Docker)
+
+Requiere: Java 21 + Maven
 
 ```bash
-# Config Server (Puerto 8888)
-cd ms-config-server && .\mvnw.cmd spring-boot:run
+# 1. Iniciar BDs
+docker-compose up -d db-pacientes db-atencion db-recetas db-farmacia db-cobros db-notificaciones
 
-# Eureka Server (Puerto 8761)
-cd ms-registry-server && .\mvnw.cmd spring-boot:run
-```
+# 2. Config Server (Puerto 8888)
+cd ms-config-server
+.\mvnw.cmd spring-boot:run
 
-### 3. Iniciar microservicios
+# 3. Eureka Server (Puerto 8761)
+cd ms-registry-server
+.\mvnw.cmd spring-boot:run
 
-```bash
-# ms-pacientes (Puerto 8081)
-cd ms-pacientes && ./mvnw quarkus:dev
+# 4. Microservicios (cada uno en terminal separada)
+cd ms-pacientes && .\mvnw.cmd quarkus:dev      # Puerto 8081
+cd ms-atencion && .\mvnw.cmd quarkus:dev       # Puerto 8082
+cd ms-recetas && .\mvnw.cmd quarkus:dev         # Puerto 8083
+cd ms-farmacia && .\mvnw.cmd quarkus:dev        # Puerto 8084
+cd ms-cobros && .\mvnw.cmd quarkus:dev          # Puerto 8085
+cd ms-notificaciones && .\mvnw.cmd quarkus:dev # Puerto 8086
 
-# ms-atencion (Puerto 8082)
-cd ms-atencion && ./mvnw quarkus:dev
-
-# ms-recetas (Puerto 8083)
-cd ms-recetas && ./mvnw quarkus:dev
-
-# ms-farmacia (Puerto 8084)
-cd ms-farmacia && ./mvnw quarkus:dev
-
-# ms-cobros (Puerto 8085)
-cd ms-cobros && ./mvnw quarkus:dev
-
-# ms-notificaciones (Puerto 8086)
-cd ms-notificaciones && ./mvnw quarkus:dev
-```
-
-### 4. Iniciar API Gateway (Puerto 8080)
-
-```bash
-cd api-gateway && ./mvnw quarkus:dev
+# 5. API Gateway (Puerto 8080)
+cd api-gateway && .\mvnw.cmd quarkus:dev
 ```
 
 
