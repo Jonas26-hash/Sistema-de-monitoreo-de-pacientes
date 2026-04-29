@@ -6,6 +6,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import upeu.edu.pe.Paciente;
 import upeu.edu.pe.dto.AuthRequest;
 import upeu.edu.pe.dto.AuthResponse;
@@ -42,14 +44,19 @@ public class AuthResource {
     @POST
     @Path("/register")
     @Transactional
-    @RolesAllowed("ADMIN")
-    public Response register(RegisterRequest request) {
-        // Si es el primer usuario del sistema, permitir sin token
+    public Response register(RegisterRequest request, @Context SecurityContext securityContext) {
+        // Si es el primer usuario del sistema, permitir inicializar el ADMIN sin token.
         if (Usuario.count() == 0) {
+            request.roles = List.of(Rol.ADMIN);
             return registrarUsuario(request);
         }
 
-        // Si ya hay usuarios, se requiere token ADMIN (manejado por @RolesAllowed)
+        if (securityContext == null || !securityContext.isUserInRole("ADMIN")) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                .entity("{\"error\":\"Token ADMIN requerido\"}")
+                .build();
+        }
+
         return registrarUsuario(request);
     }
 
@@ -63,6 +70,7 @@ public class AuthResource {
                 .entity("{\"error\":\"Solo para inicializar sistema\"}")
                 .build();
         }
+        request.roles = List.of(Rol.ADMIN);
         return registrarUsuario(request);
     }
 

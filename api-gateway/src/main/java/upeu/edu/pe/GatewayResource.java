@@ -44,13 +44,16 @@ public class GatewayResource {
     @POST
     @Path("/auth/{path:.*}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response postAuth(@PathParam("path") String path, String body) {
+    public Response postAuth(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
         try {
-            return client.target(pacientesUrl)
+            var request = client.target(pacientesUrl)
                 .path("auth")
                 .path(path)
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(body, MediaType.APPLICATION_JSON));
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
         } catch (Exception e) {
             return Response.serverError()
                 .entity("{\"error\":\"" + e.getMessage() + "\"}")
@@ -63,7 +66,7 @@ public class GatewayResource {
     @Path("/pacientes")
     @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPacientes")
     @Retry(name = "pacientesService")
-    @TimeLimiter(name = "citasService")
+    @TimeLimiter(name = "pacientesService")
     public Response getPacientes(@HeaderParam("Authorization") String authHeader) {
         try {
             var request = client.target(pacientesUrl)
@@ -138,7 +141,7 @@ public class GatewayResource {
     @Path("/citas")
     @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackCitas")
     @Retry(name = "citasService")
-    @TimeLimiter(name = "pacientesService")
+    @TimeLimiter(name = "citasService")
     public Response getCitas(@HeaderParam("Authorization") String authHeader) {
         try {
             var request = client.target(atencionUrl)
