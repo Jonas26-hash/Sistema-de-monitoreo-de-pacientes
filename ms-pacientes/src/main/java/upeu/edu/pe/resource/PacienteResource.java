@@ -2,10 +2,13 @@ package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import upeu.edu.pe.Paciente;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Path("/pacientes")
 @Produces(MediaType.APPLICATION_JSON)
@@ -35,20 +38,21 @@ public class PacienteResource {
     @POST
     @Transactional
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
-    public Paciente crear(Paciente paciente) {
+    public Response crear(@Valid Paciente paciente) {
         paciente.activo = true;
         paciente.persist();
-        return paciente;
+        return Response.status(Response.Status.CREATED).entity(paciente).build();
     }
 
     @PUT
     @Path("/{id}")
     @Transactional
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
-    public Paciente actualizar(@PathParam("id") Long id, Paciente pacienteActualizado) {
+    public Response actualizar(@PathParam("id") Long id, @Valid Paciente pacienteActualizado) {
         Paciente paciente = Paciente.findById(id);
         if (paciente == null) {
-            throw new NotFoundException("Paciente no encontrado");
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("Paciente no encontrado").build();
         }
         paciente.nombres = pacienteActualizado.nombres;
         paciente.apellidoPaterno = pacienteActualizado.apellidoPaterno;
@@ -63,18 +67,20 @@ public class PacienteResource {
         paciente.nombreSeguro = pacienteActualizado.nombreSeguro;
         paciente.numeroPoliza = pacienteActualizado.numeroPoliza;
         paciente.vigenciaSeguro = pacienteActualizado.vigenciaSeguro;
-        return paciente;
+        return Response.ok(paciente).build();
     }
 
     @DELETE
     @Path("/{id}")
     @Transactional
     @RolesAllowed({"ADMIN"})
-    public void eliminar(@PathParam("id") Long id) {
+    public Response eliminar(@PathParam("id") Long id) {
         Paciente paciente = Paciente.findById(id);
         if (paciente != null) {
             paciente.activo = false;
             paciente.persist();
+            return Response.noContent().build();
         }
+        return Response.status(Response.Status.NOT_FOUND).entity("Paciente no encontrado").build();
     }
 }

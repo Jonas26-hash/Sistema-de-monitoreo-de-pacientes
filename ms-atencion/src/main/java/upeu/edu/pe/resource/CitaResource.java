@@ -3,11 +3,11 @@ package upeu.edu.pe.resource;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
-import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import upeu.edu.pe.entity.Cita;
 import java.util.List;
 
@@ -37,16 +37,18 @@ public class CitaResource {
     }
 
     @POST
+    @Transactional
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public Response crear(Cita cita) {
+    public Response crear(@Valid Cita cita) {
         cita.persist();
         return Response.status(Response.Status.CREATED).entity(cita).build();
     }
 
     @PUT
     @Path("/{id}")
+    @Transactional
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public Response actualizar(@PathParam("id") Long id, Cita citaActualizado) {
+    public Response actualizar(@PathParam("id") Long id, @Valid Cita citaActualizado) {
         Cita cita = Cita.findById(id);
         if (cita == null) {
             return Response.status(Response.Status.NOT_FOUND).build();

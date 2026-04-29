@@ -1,6 +1,8 @@
 package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -33,16 +35,18 @@ public class MedicamentoResource {
     }
 
     @POST
+    @Transactional
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
-    public Response crear(Medicamento medicamento) {
+    public Response crear(@Valid Medicamento medicamento) {
         medicamento.persist();
         return Response.status(Response.Status.CREATED).entity(medicamento).build();
     }
 
     @PUT
     @Path("/{id}")
+    @Transactional
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
-    public Response actualizar(@PathParam("id") Long id, Medicamento med) {
+    public Response actualizar(@PathParam("id") Long id, @Valid Medicamento med) {
         Medicamento m = Medicamento.findById(id);
         if (m == null) return Response.status(Response.Status.NOT_FOUND).build();
         m.nombre = med.nombre;
