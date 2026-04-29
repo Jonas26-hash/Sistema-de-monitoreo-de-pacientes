@@ -3,8 +3,8 @@ FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-COPY pom.xml pom.xml
-COPY src src
+COPY ms-config-server/pom.xml pom.xml
+COPY ms-config-server/src src
 
 RUN mvn clean package -DskipTests
 
@@ -14,6 +14,9 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
+COPY central-config central-config
+
+ENV CENTRAL_CONFIG_PATH=file:/app/central-config/config-properties
 
 EXPOSE 8888
 
