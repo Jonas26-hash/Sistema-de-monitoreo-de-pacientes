@@ -9,6 +9,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pacientes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - hospital-network
 
@@ -21,6 +26,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d atencion_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - hospital-network
 
@@ -33,6 +43,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d recetas_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - hospital-network
 
@@ -45,6 +60,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d farmacia_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - hospital-network
 
@@ -57,6 +77,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cobros_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - hospital-network
 
@@ -69,6 +94,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5437:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notificaciones_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - hospital-network
 
@@ -99,6 +129,7 @@ services:
       context: ./ms-pacientes
       dockerfile: Dockerfile
     container_name: ms-pacientes
+    restart: on-failure
     ports:
       - "8081:8080"
     environment:
@@ -108,7 +139,8 @@ services:
       QUARKUS_DATASOURCE_USERNAME: postgres
       QUARKUS_DATASOURCE_PASSWORD: postgres
     depends_on:
-      - db-pacientes
+      db-pacientes:
+        condition: service_healthy
     networks:
       - hospital-network
 
@@ -117,6 +149,7 @@ services:
       context: ./ms-atencion
       dockerfile: Dockerfile
     container_name: ms-atencion
+    restart: on-failure
     ports:
       - "8082:8080"
     environment:
@@ -126,7 +159,8 @@ services:
       QUARKUS_DATASOURCE_USERNAME: postgres
       QUARKUS_DATASOURCE_PASSWORD: postgres
     depends_on:
-      - db-atencion
+      db-atencion:
+        condition: service_healthy
     networks:
       - hospital-network
 
@@ -135,6 +169,7 @@ services:
       context: ./ms-recetas
       dockerfile: Dockerfile
     container_name: ms-recetas
+    restart: on-failure
     ports:
       - "8083:8080"
     environment:
@@ -144,7 +179,8 @@ services:
       QUARKUS_DATASOURCE_USERNAME: postgres
       QUARKUS_DATASOURCE_PASSWORD: postgres
     depends_on:
-      - db-recetas
+      db-recetas:
+        condition: service_healthy
     networks:
       - hospital-network
 
@@ -153,6 +189,7 @@ services:
       context: ./ms-farmacia
       dockerfile: Dockerfile
     container_name: ms-farmacia
+    restart: on-failure
     ports:
       - "8084:8080"
     environment:
@@ -162,7 +199,8 @@ services:
       QUARKUS_DATASOURCE_USERNAME: postgres
       QUARKUS_DATASOURCE_PASSWORD: postgres
     depends_on:
-      - db-farmacia
+      db-farmacia:
+        condition: service_healthy
     networks:
       - hospital-network
 
@@ -171,6 +209,7 @@ services:
       context: ./ms-cobros
       dockerfile: Dockerfile
     container_name: ms-cobros
+    restart: on-failure
     ports:
       - "8085:8080"
     environment:
@@ -180,7 +219,8 @@ services:
       QUARKUS_DATASOURCE_USERNAME: postgres
       QUARKUS_DATASOURCE_PASSWORD: postgres
     depends_on:
-      - db-cobros
+      db-cobros:
+        condition: service_healthy
     networks:
       - hospital-network
 
@@ -189,6 +229,7 @@ services:
       context: ./ms-notificaciones
       dockerfile: Dockerfile
     container_name: ms-notificaciones
+    restart: on-failure
     ports:
       - "8086:8080"
     environment:
@@ -198,7 +239,8 @@ services:
       QUARKUS_DATASOURCE_USERNAME: postgres
       QUARKUS_DATASOURCE_PASSWORD: postgres
     depends_on:
-      - db-notificaciones
+      db-notificaciones:
+        condition: service_healthy
     networks:
       - hospital-network
 
