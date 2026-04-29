@@ -40,7 +40,7 @@ public class GatewayResource {
     public Response status() {
         return Response.ok("{\"status\":\"API Gateway running\",\"version\":\"1.0.0\",\"resilience\":\"enabled\"}").build();
     }
-    
+
     @POST
     @Path("/auth/{path:.*}")
     @Consumes(MediaType.APPLICATION_JSON)
