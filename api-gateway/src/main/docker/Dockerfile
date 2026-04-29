@@ -8,8 +8,8 @@ COPY src src
 
 RUN mvn package -DskipTests
 
-# Stage 2: Run (using Quarkus UBI)
-FROM quay.io/quarkus/quarkus-micro-image:2.0
+# Stage 2: Run
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
