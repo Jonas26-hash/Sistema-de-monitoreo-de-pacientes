@@ -44,49 +44,191 @@
 - **Comunicacion**: REST Client (equivalente a OpenFeign)
 - **Contenedores**: Docker, Docker Compose
 
-## Ejecucion
+## Ejecucion con Docker
 
-### Docker Compose
+Esta es la forma recomendada para levantar el proyecto completo. No es necesario ejecutar
+`mvnw.cmd` desde el IDE si se usa Docker Compose.
 
-```bash
-# Levantar todos los servicios
-docker-compose up -d
+### Requisitos
 
-# Ver logs
-docker-compose logs -f
+- Docker Desktop instalado y en ejecucion.
+- Git instalado.
+- Puertos libres: `8080`, `8081`, `8082`, `8083`, `8084`, `8085`, `8086`, `8761`, `8888`, `5432` a `5437`.
 
-# Ver servicios corriendo
-docker-compose ps
+### Clonar y levantar por primera vez
+
+```powershell
+git clone <https://github.com/Jonas26-hash/Sistema-de-monitoreo-de-pacientes.git>
+cd Sistema-de-monitoreo-de-pacientes
+docker compose up -d --build
 ```
 
-**Tiempo estimado:** 10-15 minutos (primer build)
+El primer build puede tardar varios minutos porque descarga dependencias Maven e imagenes Docker.
 
-### Desarrollo local
+Despues de levantar, esperar unos segundos y verificar:
 
-Requiere: Java 21 + Maven
+```powershell
+docker compose ps
+```
 
-```bash
-# 1. Iniciar BDs
-docker-compose up -d db-pacientes db-atencion db-recetas db-farmacia db-cobros db-notificaciones
+Todos los servicios principales deben aparecer en estado `Up`.
 
-# 2. Config Server (Puerto 8888)
+### Probar que el sistema responde
+
+El punto de entrada principal es el API Gateway:
+
+```text
+http://localhost:8080
+```
+
+Prueba rapida:
+
+```http
+GET http://localhost:8080
+```
+
+### Crear el primer usuario ADMIN
+
+Cuando la base de datos esta vacia, el primer usuario se registra sin token y se crea como `ADMIN`.
+
+```http
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123",
+  "email": "admin@hospital.com",
+  "nombres": "Administrador",
+  "apellidos": "Sistema"
+}
+```
+
+Luego iniciar sesion:
+
+```http
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+La respuesta devuelve un token JWT. Para endpoints protegidos usar:
+
+```text
+Authorization: Bearer <TOKEN>
+```
+
+### Uso diario
+
+Si ya se construyeron las imagenes y no hay cambios nuevos:
+
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+Si se hizo `git pull` o hubo cambios de codigo:
+
+```powershell
+git pull
+docker compose up -d --build
+docker compose ps
+```
+
+### Ver logs y diagnosticar errores
+
+Ver todos los logs:
+
+```powershell
+docker compose logs -f
+```
+
+Ver logs de un servicio especifico:
+
+```powershell
+docker compose logs --tail=200 api-gateway
+docker compose logs --tail=200 ms-pacientes
+```
+
+Ver todos los contenedores, incluso los que fallaron:
+
+```powershell
+docker compose ps -a
+```
+
+Si un microservicio aparece como `Exited`, revisar sus logs:
+
+```powershell
+docker compose logs --tail=200 ms-pacientes
+```
+
+
+## Ejecucion manual para desarrollo
+
+Usar este modo solo si se quiere desarrollar desde el IDE. En ese caso se recomienda levantar
+solo las bases de datos con Docker y ejecutar los servicios manualmente en terminales separadas.
+
+```powershell
+docker compose up -d db-pacientes db-atencion db-recetas db-farmacia db-cobros db-notificaciones
+```
+
+Luego iniciar cada servicio en una terminal separada:
+
+```powershell
 cd ms-config-server
 .\mvnw.cmd spring-boot:run
+```
 
-# 3. Eureka Server (Puerto 8761)
+```powershell
 cd ms-registry-server
 .\mvnw.cmd spring-boot:run
+```
 
-# 4. Microservicios (cada uno en terminal separada)
-cd ms-pacientes && .\mvnw.cmd quarkus:dev      # Puerto 8081
-cd ms-atencion && .\mvnw.cmd quarkus:dev       # Puerto 8082
-cd ms-recetas && .\mvnw.cmd quarkus:dev         # Puerto 8083
-cd ms-farmacia && .\mvnw.cmd quarkus:dev        # Puerto 8084
-cd ms-cobros && .\mvnw.cmd quarkus:dev          # Puerto 8085
-cd ms-notificaciones && .\mvnw.cmd quarkus:dev # Puerto 8086
+```powershell
+cd ms-pacientes
+.\mvnw.cmd quarkus:dev
+```
 
-# 5. API Gateway (Puerto 8080)
-cd api-gateway && .\mvnw.cmd quarkus:dev
+```powershell
+cd ms-atencion
+.\mvnw.cmd quarkus:dev
+```
+
+```powershell
+cd ms-recetas
+.\mvnw.cmd quarkus:dev
+```
+
+```powershell
+cd ms-farmacia
+.\mvnw.cmd quarkus:dev
+```
+
+```powershell
+cd ms-cobros
+.\mvnw.cmd quarkus:dev
+```
+
+```powershell
+cd ms-notificaciones
+.\mvnw.cmd quarkus:dev
+```
+
+```powershell
+cd api-gateway
+.\mvnw.cmd quarkus:dev
 ```
 
 
