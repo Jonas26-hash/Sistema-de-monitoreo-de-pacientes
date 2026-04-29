@@ -49,7 +49,7 @@
 ### Opcion 1: Docker Compose (RECOMENDADO - Todo automagico)
 
 ```bash
-# Levantar todos los servicios (BDs + Infraestructura + Microservicios + API Gateway)
+# Levantar todos los servicios
 docker-compose up -d
 
 # Ver logs
