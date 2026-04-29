@@ -46,7 +46,7 @@
 
 ## Ejecucion
 
-### Opcion 1: Docker Compose (RECOMENDADO - Todo automagico)
+### Docker Compose
 
 ```bash
 # Levantar todos los servicios
@@ -61,7 +61,7 @@ docker-compose ps
 
 **Tiempo estimado:** 10-15 minutos (primer build)
 
-### Opcion 2: Desarrollo local (sin Docker)
+### Desarrollo local
 
 Requiere: Java 21 + Maven
 
