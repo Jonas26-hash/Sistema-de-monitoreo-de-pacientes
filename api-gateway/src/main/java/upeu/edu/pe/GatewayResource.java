@@ -18,10 +18,10 @@ public class GatewayResource {
 
     private Client client = ClientBuilder.newClient();
 
-    @ConfigProperty(name = "ms.pacientes.url", defaultValue = "pacientesUrl")
+    @ConfigProperty(name = "ms.pacientes.url", defaultValue = "http://localhost:8081")
     String pacientesUrl;
 
-    @ConfigProperty(name = "ms.atencion.url", defaultValue = "atencionUrl")
+    @ConfigProperty(name = "ms.atencion.url", defaultValue = "http://localhost:8082")
     String atencionUrl;
 
     @ConfigProperty(name = "ms.recetas.url", defaultValue = "http://localhost:8083")
@@ -40,8 +40,7 @@ public class GatewayResource {
     public Response status() {
         return Response.ok("{\"status\":\"API Gateway running\",\"version\":\"1.0.0\",\"resilience\":\"enabled\"}").build();
     }
-
-    // ============ AUTH (Público - sin token) ============
+    
     @POST
     @Path("/auth/{path:.*}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -64,7 +63,7 @@ public class GatewayResource {
     @Path("/pacientes")
     @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPacientes")
     @Retry(name = "pacientesService")
-    @TimeLimiter(name = "pacientesService")
+    @TimeLimiter(name = "citasService")
     public Response getPacientes(@HeaderParam("Authorization") String authHeader) {
         try {
             var request = client.target(pacientesUrl)
@@ -91,7 +90,7 @@ public class GatewayResource {
     @Retry(name = "pacientesService")
     public Response getPacientesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
         try {
-            var request = client.target("pacientesUrl")
+            var request = client.target(pacientesUrl)
                 .path("pacientes")
                 .path(path)
                 .request(MediaType.APPLICATION_JSON);
@@ -116,7 +115,7 @@ public class GatewayResource {
     @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPostPacientes")
     public Response postPacientes(String body, @HeaderParam("Authorization") String authHeader) {
         try {
-            var request = client.target("pacientesUrl")
+            var request = client.target(pacientesUrl)
                 .path("pacientes")
                 .request(MediaType.APPLICATION_JSON);
             if (authHeader != null && !authHeader.isEmpty()) {
@@ -166,7 +165,7 @@ public class GatewayResource {
     @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackPostCitas")
     public Response postCitas(String body, @HeaderParam("Authorization") String authHeader) {
         try {
-            var request = client.target("atencionUrl")
+            var request = client.target(atencionUrl)
                 .path("citas")
                 .request(MediaType.APPLICATION_JSON);
             if (authHeader != null && !authHeader.isEmpty()) {
@@ -272,30 +271,6 @@ public class GatewayResource {
         try {
             String baseUrl = getServiceUrl(path);
             var request = client.target(baseUrl)
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-}
-            return request.get();
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-
-    private Response proxyPost(String path, int port, String body, String authHeader) {
-        try {
-            var request = client.target("http://localhost:" + port)
                 .path(path)
                 .request(MediaType.APPLICATION_JSON);
             if (authHeader != null && !authHeader.isEmpty()) {
