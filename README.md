@@ -246,7 +246,7 @@ cd api-gateway
 ### Atencion
 - `GET /citas` - Listar citas
 - `POST /citas` - Crear cita
-- `GET /citas/{id}/paciente` - Obtener datos del paciente via OpenFeign
+- `GET /citas/{id}/paciente` - Obtener datos del paciente
 
 ### Recetas
 - `GET /recetas` - Listar recetas
@@ -258,7 +258,7 @@ cd api-gateway
 
 ## Comunicacion entre Microservicios
 
-### Ejemplo: ms-atencion llama a ms-pacientes (OpenFeign/REST Client)
+### Ejemplo: ms-atencion llama a ms-pacientes (REST Client)
 
 ```java
 @Path("/pacientes")
