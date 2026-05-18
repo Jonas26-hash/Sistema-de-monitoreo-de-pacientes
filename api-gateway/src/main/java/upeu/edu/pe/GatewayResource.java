@@ -41,6 +41,25 @@ public class GatewayResource {
         return Response.ok("{\"status\":\"API Gateway running\",\"version\":\"1.0.0\",\"resilience\":\"enabled\"}").build();
     }
 
+    @GET
+    @Path("/auth/{path:.*}")
+    public Response getAuth(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        try {
+            var request = client.target(pacientesUrl)
+                .path("auth")
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return request.get();
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .build();
+        }
+    }
+
     @POST
     @Path("/auth/{path:.*}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -186,11 +205,62 @@ public class GatewayResource {
             .build();
     }
 
+    @GET
+    @Path("/citas/{path:.*}")
+    @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackCitasPath")
+    @Retry(name = "citasService")
+    public Response getCitasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        try {
+            var request = client.target(atencionUrl)
+                .path("citas")
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return request.get();
+        } catch (Exception e) {
+            return fallbackCitasPath(path, authHeader, e);
+        }
+    }
+
+    public Response fallbackCitasPath(String path, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio de citas no disponible\",\"type\":\"CIRCUIT_BREAKER\"}")
+            .build();
+    }
+
+    // ============ CONSULTAS ============
+    @GET
+    @Path("/consultas")
+    public Response getConsultas(@HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("consultas", "", authHeader);
+    }
+
+    @GET
+    @Path("/consultas/{path:.*}")
+    public Response getConsultasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("consultas", path, authHeader);
+    }
+
+    @POST
+    @Path("/consultas")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response postConsultas(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostService("consultas", body, authHeader);
+    }
+
     // ============ RECETAS ============
     @GET
     @Path("/recetas")
     public Response getRecetas(@HeaderParam("Authorization") String authHeader) {
         return proxyGet("recetas", authHeader);
+    }
+
+    @GET
+    @Path("/recetas/{path:.*}")
+    public Response getRecetasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("recetas", path, authHeader);
     }
 
     @POST
@@ -214,11 +284,43 @@ public class GatewayResource {
         return proxyPost("medicamentos", body, authHeader);
     }
 
+    @GET
+    @Path("/medicamentos/{path:.*}")
+    public Response getMedicamentosPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("medicamentos", path, authHeader);
+    }
+
+    // ============ DISPENSACIONES ============
+    @GET
+    @Path("/dispensaciones")
+    public Response getDispensaciones(@HeaderParam("Authorization") String authHeader) {
+        return proxyGet("dispensaciones", authHeader);
+    }
+
+    @POST
+    @Path("/dispensaciones")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response postDispensaciones(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPost("dispensaciones", body, authHeader);
+    }
+
+    @GET
+    @Path("/dispensaciones/{path:.*}")
+    public Response getDispensacionesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("dispensaciones", path, authHeader);
+    }
+
     // ============ COBROS ============
     @GET
     @Path("/cobros")
     public Response getCobros(@HeaderParam("Authorization") String authHeader) {
         return proxyGet("cobros", authHeader);
+    }
+
+    @GET
+    @Path("/cobros/{path:.*}")
+    public Response getCobrosPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("cobros", path, authHeader);
     }
 
     @POST
@@ -235,6 +337,12 @@ public class GatewayResource {
         return proxyGet("notificaciones", authHeader);
     }
 
+    @GET
+    @Path("/notificaciones/{path:.*}")
+    public Response getNotificacionesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("notificaciones", path, authHeader);
+    }
+
     @POST
     @Path("/notificaciones")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -247,10 +355,49 @@ public class GatewayResource {
         return switch (service) {
             case "recetas" -> recetasUrl;
             case "medicamentos" -> farmaciaUrl;
+            case "dispensaciones" -> farmaciaUrl;
             case "cobros" -> cobrosUrl;
             case "notificaciones" -> notificacionesUrl;
+            case "consultas" -> atencionUrl;
+            case "citas" -> atencionUrl;
+            case "auth" -> pacientesUrl;
             default -> recetasUrl;
         };
+    }
+
+    private Response proxyGetService(String service, String path, String authHeader) {
+        try {
+            String baseUrl = getServiceUrl(service);
+            var request = client.target(baseUrl)
+                .path(service)
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return request.get();
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .build();
+        }
+    }
+
+    private Response proxyPostService(String service, String body, String authHeader) {
+        try {
+            String baseUrl = getServiceUrl(service);
+            var request = client.target(baseUrl)
+                .path(service)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .build();
+        }
     }
 
     private Response proxyGet(String path, String authHeader) {

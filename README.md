@@ -58,7 +58,7 @@ Esta es la forma recomendada para levantar el proyecto completo. No es necesario
 ### Clonar y levantar por primera vez
 
 ```powershell
-git clone <https://github.com/Jonas26-hash/Sistema-de-monitoreo-de-pacientes.git>
+git clone https://github.com/Jonas26-hash/Sistema-de-monitoreo-de-pacientes.git
 cd Sistema-de-monitoreo-de-pacientes
 docker compose up -d --build
 ```

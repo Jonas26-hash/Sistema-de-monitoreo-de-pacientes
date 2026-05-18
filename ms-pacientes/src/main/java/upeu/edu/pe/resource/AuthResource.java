@@ -45,7 +45,6 @@ public class AuthResource {
     @Path("/register")
     @Transactional
     public Response register(RegisterRequest request, @Context SecurityContext securityContext) {
-        // Si es el primer usuario del sistema, permitir inicializar el ADMIN sin token.
         if (Usuario.count() == 0) {
             request.roles = List.of(Rol.ADMIN);
             return registrarUsuario(request);
@@ -64,7 +63,6 @@ public class AuthResource {
     @Path("/register-init")
     @Transactional
     public Response registerBootstrap(RegisterRequest request) {
-        // Solo permitir si es el primer usuario
         if (Usuario.count() > 0) {
             return Response.status(Response.Status.FORBIDDEN)
                 .entity("{\"error\":\"Solo para inicializar sistema\"}")
