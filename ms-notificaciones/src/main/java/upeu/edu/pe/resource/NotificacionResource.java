@@ -1,10 +1,13 @@
 package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import upeu.edu.pe.dto.CorreoRequest;
 import upeu.edu.pe.entity.Notificacion;
+import upeu.edu.pe.service.EmailService;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,6 +15,9 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class NotificacionResource {
+
+    @Inject
+    EmailService emailService;
 
     @GET
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
@@ -32,5 +38,19 @@ public class NotificacionResource {
         notificacion.fechaEnvio = LocalDateTime.now();
         notificacion.persist();
         return Response.status(Response.Status.CREATED).entity(notificacion).build();
+    }
+
+    @POST
+    @Path("/enviar-correo")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response enviarCorreo(CorreoRequest request) {
+        try {
+            emailService.enviarCodigoVerificacion(request.to, request.codigo);
+            return Response.ok("{\"mensaje\":\"Correo enviado exitosamente\"}").build();
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"Error al enviar correo: " + e.getMessage() + "\"}")
+                .build();
+        }
     }
 }

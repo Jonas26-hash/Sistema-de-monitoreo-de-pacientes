@@ -42,17 +42,17 @@ public class GatewayResource {
     }
 
     @GET
-    @Path("/auth/{path:.*}")
-    public Response getAuth(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+    @Path("/auth/pendientes")
+    public Response getAuthPendientes(@HeaderParam("Authorization") String authHeader) {
         try {
             var request = client.target(pacientesUrl)
                 .path("auth")
-                .path(path)
+                .path("pendientes")
                 .request(MediaType.APPLICATION_JSON);
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return Response.serverError()
                 .entity("{\"error\":\"" + e.getMessage() + "\"}")
@@ -60,22 +60,91 @@ public class GatewayResource {
         }
     }
 
-    @POST
-    @Path("/auth/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response postAuth(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+    @GET
+    @Path("/auth/usuarios")
+    public Response getAuthUsuarios(@HeaderParam("Authorization") String authHeader) {
         try {
             var request = client.target(pacientesUrl)
                 .path("auth")
-                .path(path)
+                .path("usuarios")
                 .request(MediaType.APPLICATION_JSON);
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+            return handleResponse(request.get());
         } catch (Exception e) {
             return Response.serverError()
                 .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .build();
+        }
+    }
+
+    @GET
+    @Path("/auth/usuarios/{id}")
+    public Response getAuthUsuariosId(@PathParam("id") Long id, @HeaderParam("Authorization") String authHeader) {
+        return proxyGetService("auth", "usuarios/" + id, authHeader);
+    }
+
+    @POST
+    @Path("/auth/login")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyLogin(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostServiceAuth("login", body, authHeader);
+    }
+
+    @POST
+    @Path("/auth/pre-registro")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyPreRegistro(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostServiceAuth("pre-registro", body, authHeader);
+    }
+
+    @POST
+    @Path("/auth/verificar-codigo")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyVerificarCodigo(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostServiceAuth("verificar-codigo", body, authHeader);
+    }
+
+    @POST
+    @Path("/auth/completar-registro")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyCompletarRegistro(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostServiceAuth("completar-registro", body, authHeader);
+    }
+
+    @POST
+    @Path("/auth/register")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyRegister(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostServiceAuth("register", body, authHeader);
+    }
+
+    @POST
+    @Path("/auth/pre-registro-personal")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyPreRegistroPersonal(String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostServiceAuth("pre-registro-personal", body, authHeader);
+    }
+
+    @PUT
+    @Path("/auth/pendientes/{id}/aprobar")
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyAprobarPendiente(@PathParam("id") Long id, @HeaderParam("Authorization") String authHeader) {
+        try {
+            var request = client.target(pacientesUrl)
+                .path("auth")
+                .path("pendientes")
+                .path(String.valueOf(id))
+                .path("aprobar")
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return handleResponse(request.put(Entity.entity("", MediaType.APPLICATION_JSON)));
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
                 .build();
         }
     }
@@ -94,7 +163,7 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return fallbackPacientes(authHeader, e);
         }
@@ -119,7 +188,7 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return fallbackPacientesPath(path, authHeader, e);
         }
@@ -133,7 +202,7 @@ public class GatewayResource {
 
     @POST
     @Path("/pacientes")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPostPacientes")
     public Response postPacientes(String body, @HeaderParam("Authorization") String authHeader) {
         try {
@@ -143,7 +212,7 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
         } catch (Exception e) {
             return fallbackPostPacientes(body, authHeader, e);
         }
@@ -169,7 +238,7 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return fallbackCitas(authHeader, e);
         }
@@ -183,9 +252,10 @@ public class GatewayResource {
 
     @POST
     @Path("/citas")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackPostCitas")
-    public Response postCitas(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postCitas(String body, @HeaderParam("Authorization") String authHeader,
+            @HeaderParam("Idempotency-Key") String idempotencyKey) {
         try {
             var request = client.target(atencionUrl)
                 .path("citas")
@@ -193,7 +263,10 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+            if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
+                request = request.header("Idempotency-Key", idempotencyKey);
+            }
+            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
         } catch (Exception e) {
             return fallbackPostCitas(body, authHeader, e);
         }
@@ -218,7 +291,7 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return fallbackCitasPath(path, authHeader, e);
         }
@@ -245,7 +318,7 @@ public class GatewayResource {
 
     @POST
     @Path("/consultas")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     public Response postConsultas(String body, @HeaderParam("Authorization") String authHeader) {
         return proxyPostService("consultas", body, authHeader);
     }
@@ -265,7 +338,7 @@ public class GatewayResource {
 
     @POST
     @Path("/recetas")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     public Response postRecetas(String body, @HeaderParam("Authorization") String authHeader) {
         return proxyPost("recetas", body, authHeader);
     }
@@ -279,7 +352,7 @@ public class GatewayResource {
 
     @POST
     @Path("/medicamentos")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     public Response postMedicamentos(String body, @HeaderParam("Authorization") String authHeader) {
         return proxyPost("medicamentos", body, authHeader);
     }
@@ -299,7 +372,7 @@ public class GatewayResource {
 
     @POST
     @Path("/dispensaciones")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     public Response postDispensaciones(String body, @HeaderParam("Authorization") String authHeader) {
         return proxyPost("dispensaciones", body, authHeader);
     }
@@ -325,7 +398,7 @@ public class GatewayResource {
 
     @POST
     @Path("/cobros")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     public Response postCobros(String body, @HeaderParam("Authorization") String authHeader) {
         return proxyPost("cobros", body, authHeader);
     }
@@ -345,9 +418,16 @@ public class GatewayResource {
 
     @POST
     @Path("/notificaciones")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     public Response postNotificaciones(String body, @HeaderParam("Authorization") String authHeader) {
         return proxyPost("notificaciones", body, authHeader);
+    }
+
+    @POST
+    @Path("/notificaciones/{path:.*}")
+    @Consumes(MediaType.WILDCARD)
+    public Response postNotificacionesPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+        return proxyPostService("notificaciones", path, body, authHeader);
     }
 
 // Métodos auxiliares
@@ -365,6 +445,17 @@ public class GatewayResource {
         };
     }
 
+    private Response handleResponse(Response response) {
+        if (response.getStatus() == 403) {
+            response.close();
+            return Response.status(403)
+                .type(MediaType.APPLICATION_JSON)
+                .entity("{\"error\":\"Acceso denegado\",\"mensaje\":\"No tienes permisos para acceder a este recurso. Verifica que tu rol tenga acceso.\",\"code\":403}")
+                .build();
+        }
+        return response;
+    }
+
     private Response proxyGetService(String service, String path, String authHeader) {
         try {
             String baseUrl = getServiceUrl(service);
@@ -375,10 +466,28 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
+                .build();
+        }
+    }
+
+    private Response proxyPostServiceAuth(String path, String body, String authHeader) {
+        try {
+            String baseUrl = getServiceUrl("auth");
+            var request = client.target(baseUrl)
+                .path("auth")
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
                 .build();
         }
     }
@@ -392,10 +501,28 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
         } catch (Exception e) {
             return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
+                .build();
+        }
+    }
+
+    private Response proxyPostService(String service, String path, String body, String authHeader) {
+        try {
+            String baseUrl = getServiceUrl(service);
+            var request = client.target(baseUrl)
+                .path(service)
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
+        } catch (Exception e) {
+            return Response.serverError()
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
                 .build();
         }
     }
@@ -409,10 +536,10 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.get();
+            return handleResponse(request.get());
         } catch (Exception e) {
             return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
                 .build();
         }
     }
@@ -426,10 +553,10 @@ public class GatewayResource {
             if (authHeader != null && !authHeader.isEmpty()) {
                 request = request.header("Authorization", authHeader);
             }
-            return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
         } catch (Exception e) {
             return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
                 .build();
         }
     }

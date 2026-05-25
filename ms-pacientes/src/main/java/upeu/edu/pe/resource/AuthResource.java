@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
+import org.mindrot.jbcrypt.BCrypt;
 import upeu.edu.pe.Paciente;
 import upeu.edu.pe.dto.AuthRequest;
 import upeu.edu.pe.dto.AuthResponse;
@@ -30,6 +31,7 @@ public class AuthResource {
 
     @POST
     @Path("/login")
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response login(AuthRequest request) {
         try {
             AuthResponse response = authService.authenticate(request.username, request.password);
@@ -112,7 +114,7 @@ public class AuthResource {
 
         Usuario usuario = new Usuario();
         usuario.username = request.username;
-        usuario.password = request.password;
+        usuario.password = BCrypt.hashpw(request.password, BCrypt.gensalt());
         usuario.email = request.email;
         usuario.roles = request.roles != null ? request.roles : List.of();
         usuario.activo = true;
@@ -146,7 +148,7 @@ public class AuthResource {
 
     @GET
     @Path("/usuarios/{id}")
-    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "CAJERO"})
+    @RolesAllowed("ADMIN")
     public Response buscarUsuario(@PathParam("id") Long id) {
         Usuario usuario = Usuario.findById(id);
         if (usuario == null) {
@@ -159,7 +161,7 @@ public class AuthResource {
 
     @GET
     @Path("/usuarios/rol/{rol}")
-    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "CAJERO"})
+    @RolesAllowed("ADMIN")
     public List<UsuarioResponse> listarPorRol(@PathParam("rol") String rol) {
         try {
             return Usuario.list("roles like ?1 and activo = true", "%" + rol + "%").stream()
@@ -207,6 +209,35 @@ public class AuthResource {
         }
         usuario.activo = false;
         return Response.ok("{\"message\":\"Usuario desactivado\"}").build();
+    }
+
+    @GET
+    @Path("/pendientes")
+    @RolesAllowed("ADMIN")
+    public List<UsuarioResponse> listarPendientes() {
+        return Usuario.list("activo = false").stream()
+            .map(u -> toResponse((Usuario) u))
+            .collect(Collectors.toList());
+    }
+
+    @PUT
+    @Path("/pendientes/{id}/aprobar")
+    @Transactional
+    @RolesAllowed("ADMIN")
+    public Response aprobarUsuario(@PathParam("id") Long id) {
+        Usuario usuario = Usuario.findById(id);
+        if (usuario == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Usuario no encontrado\"}")
+                .build();
+        }
+        if (usuario.activo) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"El usuario ya está activo\"}")
+                .build();
+        }
+        usuario.activo = true;
+        return Response.ok("{\"mensaje\":\"Usuario aprobado exitosamente\"}").build();
     }
 
     private UsuarioResponse toResponse(Usuario usuario) {

@@ -2,6 +2,8 @@ package upeu.edu.pe.service;
 
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
+import org.mindrot.jbcrypt.BCrypt;
 import upeu.edu.pe.dto.AuthResponse;
 import upeu.edu.pe.entity.Rol;
 import upeu.edu.pe.entity.Usuario;
@@ -14,6 +16,7 @@ public class AuthService {
 
     private static final String ISSUER = "hospital-system";
 
+    @Transactional
     public AuthResponse authenticate(String username, String password) {
         Usuario usuario = Usuario.findByUsername(username);
 
@@ -21,8 +24,18 @@ public class AuthService {
             throw new SecurityException("Usuario inválido");
         }
 
-        if (!password.equals(usuario.password)) {
-            throw new SecurityException("Credenciales inválidas");
+        boolean bcryptMatch = false;
+        try {
+            bcryptMatch = BCrypt.checkpw(password, usuario.password);
+        } catch (IllegalArgumentException e) {
+            // password is not a BCrypt hash (plain text from legacy system)
+        }
+        if (!bcryptMatch) {
+            if (!password.equals(usuario.password)) {
+                throw new SecurityException("Credenciales inválidas");
+            }
+            usuario.password = BCrypt.hashpw(password, BCrypt.gensalt());
+            usuario.persist();
         }
 
         Set<String> rolesSet = usuario.roles.stream()

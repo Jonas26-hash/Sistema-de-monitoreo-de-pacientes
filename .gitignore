@@ -13,3 +13,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# SSL / JWT keys
+*.pem
