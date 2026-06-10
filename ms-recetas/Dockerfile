@@ -12,7 +12,9 @@ COPY --from=builder /app/target/quarkus-app/lib/ /deployments/lib/
 COPY --from=builder /app/target/quarkus-app/*.jar /deployments/
 COPY --from=builder /app/target/quarkus-app/app/ /deployments/app/
 COPY --from=builder /app/target/quarkus-app/quarkus/ /deployments/quarkus/
-EXPOSE 8080
-ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+EXPOSE 8083
+ENV QUARKUS_HTTP_HOST=0.0.0.0
+ENV QUARKUS_HTTP_PORT=8083
+ENV JAVA_OPTS_APPEND="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 ENTRYPOINT [ "/opt/jboss/container/java/run/run-java.sh" ]

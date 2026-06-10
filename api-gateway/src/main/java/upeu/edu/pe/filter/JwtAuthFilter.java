@@ -7,10 +7,11 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
+import java.security.Principal;
 import java.util.Set;
 import java.util.logging.Logger;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import io.smallrye.jwt.auth.principal.JWTParser;
 
 @Provider
@@ -24,7 +25,9 @@ public class JwtAuthFilter implements ContainerRequestFilter {
         "/auth/login",
         "/auth/pre-registro",
         "/auth/verificar-codigo",
-        "/auth/completar-registro"
+        "/auth/completar-registro",
+        "/auth/register",
+        "/auth/pre-registro-personal"
     );
 
     @Inject
@@ -54,8 +57,28 @@ public class JwtAuthFilter implements ContainerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            jwtParser.parse(token);
+            var jwt = jwtParser.parse(token);
+            SecurityContext original = requestContext.getSecurityContext();
+            requestContext.setSecurityContext(new SecurityContext() {
+                @Override
+                public Principal getUserPrincipal() {
+                    return () -> jwt.getSubject() != null ? jwt.getSubject() : "unknown";
+                }
+                @Override
+                public boolean isUserInRole(String role) {
+                    return jwt.getGroups().contains(role);
+                }
+                @Override
+                public boolean isSecure() {
+                    return original != null && original.isSecure();
+                }
+                @Override
+                public String getAuthenticationScheme() {
+                    return "Bearer";
+                }
+            });
         } catch (Exception e) {
+            log.warning("JWT validation failed for path: " + path);
             requestContext.abortWith(
                 Response.status(Response.Status.UNAUTHORIZED)
                     .type("application/json")

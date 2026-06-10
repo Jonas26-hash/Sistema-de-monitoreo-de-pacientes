@@ -16,3 +16,15 @@ Thumbs.db
 
 # SSL / JWT keys
 *.pem
+
+# Environment / local config
+.env
+.env.*
+*.env
+
+# Agent memory / local docs
+CLAUDE.md
+
+# Local test scripts
+test-login.ps1
+test-*.ps1

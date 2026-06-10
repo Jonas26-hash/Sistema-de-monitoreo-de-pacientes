@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -14,6 +15,7 @@ import upeu.edu.pe.entity.IdempotencyRecord;
 import upeu.edu.pe.service.IdempotencyService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Path("/citas")
@@ -46,20 +48,28 @@ public class CitaResource {
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
-    public Cita buscar(@PathParam("id") Long id) {
-        return Cita.findById(id);
+    public Response buscar(@PathParam("id") Long id) {
+        Cita cita = Cita.findById(id);
+        if (cita == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Cita no encontrada\"}").build();
+        }
+        return Response.ok(cita).build();
     }
 
     @POST
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     @Transactional
-    public Response crear(Cita cita, @HeaderParam("Idempotency-Key") String idempotencyKey) {
-        IdempotencyRecord existing = idempotencyService.findExisting(idempotencyKey);
-        if (existing != null) {
-            return Response.status(existing.responseStatus)
-                .entity(existing.responseBody)
-                .header("X-Idempotent", "replayed")
-                .build();
+    public Response crear(@Valid Cita cita, @HeaderParam("Idempotency-Key") String idempotencyKey) {
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            IdempotencyRecord existing = idempotencyService.findExisting(idempotencyKey);
+            if (existing != null) {
+                return Response.status(existing.responseStatus)
+                    .entity(existing.responseBody)
+                    .type(MediaType.APPLICATION_JSON)
+                    .header("X-Idempotent", "replayed")
+                    .build();
+            }
         }
 
         if (cita.estado == null || cita.estado.isBlank()) {
@@ -81,7 +91,7 @@ public class CitaResource {
                     .put("fechaHora", cita.fechaHora != null ? cita.fechaHora.toString() : "")
                     .put("motivo", cita.motivo != null ? cita.motivo : "")
                     .put("email", "")
-                    .put("pacienteNombre", "Paciente")
+                    .put("pacienteNombre", "")
             );
             outbox.status = "PENDING";
             outbox.createdAt = LocalDateTime.now();
@@ -92,7 +102,12 @@ public class CitaResource {
         }
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            idempotencyService.saveRecord(idempotencyKey, "{\"id\":" + cita.id + "}", 201);
+            try {
+                String fullJson = mapper.writeValueAsString(cita);
+                idempotencyService.saveRecord(idempotencyKey, fullJson, 201);
+            } catch (Exception e) {
+                idempotencyService.saveRecord(idempotencyKey, "{\"id\":" + cita.id + "}", 201);
+            }
         }
 
         return Response.status(Response.Status.CREATED)

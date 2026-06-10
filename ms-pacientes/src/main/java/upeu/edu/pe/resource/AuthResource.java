@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.validation.Valid;
 import org.mindrot.jbcrypt.BCrypt;
 import upeu.edu.pe.Paciente;
 import upeu.edu.pe.dto.AuthRequest;
@@ -32,13 +33,13 @@ public class AuthResource {
     @POST
     @Path("/login")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response login(AuthRequest request) {
+    public Response login(@Valid AuthRequest request) {
         try {
             AuthResponse response = authService.authenticate(request.username, request.password);
             return Response.ok(response).build();
         } catch (SecurityException e) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .entity("{\"error\":\"Credenciales inválidas\"}")
                 .build();
         }
     }
@@ -46,7 +47,7 @@ public class AuthResource {
     @POST
     @Path("/register")
     @Transactional
-    public Response register(RegisterRequest request, @Context SecurityContext securityContext) {
+    public Response register(@Valid RegisterRequest request, @Context SecurityContext securityContext) {
         if (Usuario.count() == 0) {
             request.roles = List.of(Rol.ADMIN);
             return registrarUsuario(request);
@@ -64,7 +65,7 @@ public class AuthResource {
     @POST
     @Path("/register-init")
     @Transactional
-    public Response registerBootstrap(RegisterRequest request) {
+    public Response registerBootstrap(@Valid RegisterRequest request) {
         if (Usuario.count() > 0) {
             return Response.status(Response.Status.FORBIDDEN)
                 .entity("{\"error\":\"Solo para inicializar sistema\"}")
@@ -162,13 +163,18 @@ public class AuthResource {
     @GET
     @Path("/usuarios/rol/{rol}")
     @RolesAllowed("ADMIN")
-    public List<UsuarioResponse> listarPorRol(@PathParam("rol") String rol) {
+    public Response listarPorRol(@PathParam("rol") String rol) {
         try {
-            return Usuario.list("roles like ?1 and activo = true", "%" + rol + "%").stream()
-                .map(u -> toResponse((Usuario) u))
-                .collect(Collectors.toList());
-        } catch (Exception e) {
-            return List.of();
+            List<Usuario> usuarios = Usuario.findByRole(rol);
+            return Response.ok(
+                usuarios.stream()
+                    .map(u -> toResponse(u))
+                    .collect(Collectors.toList())
+            ).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"Rol inválido\"}")
+                .build();
         }
     }
 
@@ -176,7 +182,7 @@ public class AuthResource {
     @Path("/usuarios/{id}")
     @Transactional
     @RolesAllowed("ADMIN")
-    public Response actualizar(@PathParam("id") Long id, RegisterRequest request) {
+    public Response actualizar(@PathParam("id") Long id, @Valid RegisterRequest request) {
         Usuario usuario = Usuario.findById(id);
         if (usuario == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -208,7 +214,7 @@ public class AuthResource {
                 .build();
         }
         usuario.activo = false;
-        return Response.ok("{\"message\":\"Usuario desactivado\"}").build();
+        return Response.ok("{\"mensaje\":\"Usuario desactivado\"}").build();
     }
 
     @GET
@@ -245,7 +251,9 @@ public class AuthResource {
         r.id = usuario.id;
         r.username = usuario.username;
         r.email = usuario.email;
-        r.roles = usuario.roles.stream().map(Rol::name).toArray(String[]::new);
+        r.roles = usuario.roles != null
+            ? usuario.roles.stream().map(Rol::name).toArray(String[]::new)
+            : new String[0];
         r.nombres = usuario.nombres;
         r.apellidos = usuario.apellidos;
         r.especialidad = usuario.especialidad;

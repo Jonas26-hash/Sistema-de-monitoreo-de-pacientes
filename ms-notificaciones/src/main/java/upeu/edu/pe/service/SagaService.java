@@ -22,9 +22,9 @@ public class SagaService {
     public void procesarFacturaCreada(String payload) {
         try {
             JsonNode factura = mapper.readTree(payload);
-            String email = factura.has("email") ? factura.get("email").asText() : "";
-            String nombre = factura.has("pacienteNombre") ? factura.get("pacienteNombre").asText() : "Paciente";
-            Long pacienteId = factura.has("pacienteId") ? factura.get("pacienteId").asLong() : null;
+            String email = factura.has("email") && !factura.get("email").isNull() ? factura.get("email").asText() : "";
+            String nombre = factura.has("pacienteNombre") && !factura.get("pacienteNombre").isNull() ? factura.get("pacienteNombre").asText() : "Paciente";
+            Long pacienteId = factura.has("pacienteId") && !factura.get("pacienteId").isNull() ? factura.get("pacienteId").asLong() : 0L;
             Double monto = factura.has("monto") ? factura.get("monto").asDouble() : 0;
 
             Notificacion notif = new Notificacion();

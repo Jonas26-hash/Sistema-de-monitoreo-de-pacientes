@@ -1,6 +1,5 @@
 package upeu.edu.pe.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -60,7 +59,7 @@ public class SagaService {
 
             return "OK";
 
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Error processing CITA_CREADA payload", e);
         }
     }
@@ -87,7 +86,7 @@ public class SagaService {
             eventoSalida.persist();
 
             return "COMPENSATED";
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Error creating compensation event", e);
         }
     }

@@ -17,6 +17,11 @@ public class SagaEventReceiver {
 
     @POST
     public Response recibirEvento(SagaEvent event) {
+        if (event == null || event.eventType == null || event.payload == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"status\":\"error\",\"message\":\"Invalid event payload\"}")
+                .build();
+        }
         try {
             if ("FACTURA_CREADA".equals(event.eventType)) {
                 sagaService.procesarFacturaCreada(event.payload);
@@ -25,7 +30,7 @@ public class SagaEventReceiver {
             return Response.ok("{\"status\":\"ignored\"}").build();
         } catch (Exception e) {
             return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
+                .entity("{\"error\":\"Error procesando evento\"}")
                 .build();
         }
     }

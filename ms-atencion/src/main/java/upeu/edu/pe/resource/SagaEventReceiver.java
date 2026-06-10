@@ -19,6 +19,11 @@ public class SagaEventReceiver {
     @POST
     @Transactional
     public Response recibirEvento(SagaEvent event) {
+        if (event == null || event.eventType == null || event.payload == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"status\":\"error\",\"message\":\"Invalid event payload\"}")
+                .build();
+        }
         if ("FACTURA_FALLIDA".equals(event.eventType)) {
             compensationService.cancelarCitaPorFacturaFallida(event.payload);
             return Response.ok("{\"status\":\"compensated\"}").build();

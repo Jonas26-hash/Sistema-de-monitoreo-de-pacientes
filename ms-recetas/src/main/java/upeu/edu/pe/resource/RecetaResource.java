@@ -1,6 +1,8 @@
 package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -28,13 +30,19 @@ public class RecetaResource {
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
-    public Receta buscar(@PathParam("id") Long id) {
-        return Receta.findById(id);
+    public Response buscar(@PathParam("id") Long id) {
+        Receta receta = Receta.findById(id);
+        if (receta == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Receta no encontrada\"}").build();
+        }
+        return Response.ok(receta).build();
     }
 
     @POST
+    @Transactional
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public Response crear(Receta receta) {
+    public Response crear(@Valid Receta receta) {
         receta.persist();
         return Response.status(Response.Status.CREATED).entity(receta).build();
     }

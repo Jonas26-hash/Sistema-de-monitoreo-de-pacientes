@@ -1,9 +1,6 @@
 package upeu.edu.pe;
 
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import jakarta.annotation.PreDestroy;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -11,6 +8,9 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Fallback;
+import org.eclipse.microprofile.faulttolerance.Retry;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
@@ -36,6 +36,11 @@ public class GatewayResource {
     @ConfigProperty(name = "ms.notificaciones.url", defaultValue = "http://localhost:8086")
     String notificacionesUrl;
 
+    @PreDestroy
+    void cleanup() {
+        if (client != null) client.close();
+    }
+
     @GET
     public Response status() {
         return Response.ok("{\"status\":\"API Gateway running\",\"version\":\"1.0.0\",\"resilience\":\"enabled\"}").build();
@@ -43,130 +48,99 @@ public class GatewayResource {
 
     @GET
     @Path("/auth/pendientes")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getAuthPendientes(@HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(pacientesUrl)
-                .path("auth")
-                .path("pendientes")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
+        return handleResponse(buildGet(pacientesUrl, "auth/pendientes", authHeader));
     }
 
     @GET
     @Path("/auth/usuarios")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getAuthUsuarios(@HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(pacientesUrl)
-                .path("auth")
-                .path("usuarios")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
+        return handleResponse(buildGet(pacientesUrl, "auth/usuarios", authHeader));
     }
 
     @GET
     @Path("/auth/usuarios/{id}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response getAuthUsuariosId(@PathParam("id") Long id, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("auth", "usuarios/" + id, authHeader);
+        return handleResponse(buildGet(pacientesUrl, "auth/usuarios/" + id, authHeader));
     }
 
     @POST
     @Path("/auth/login")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyLogin(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostServiceAuth("login", body, authHeader);
+        return handleResponse(buildPost(pacientesUrl, "auth/login", body, authHeader));
     }
 
     @POST
     @Path("/auth/pre-registro")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyPreRegistro(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostServiceAuth("pre-registro", body, authHeader);
+        return handleResponse(buildPost(pacientesUrl, "auth/pre-registro", body, authHeader));
     }
 
     @POST
     @Path("/auth/verificar-codigo")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyVerificarCodigo(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostServiceAuth("verificar-codigo", body, authHeader);
+        return handleResponse(buildPost(pacientesUrl, "auth/verificar-codigo", body, authHeader));
     }
 
     @POST
     @Path("/auth/completar-registro")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyCompletarRegistro(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostServiceAuth("completar-registro", body, authHeader);
+        return handleResponse(buildPost(pacientesUrl, "auth/completar-registro", body, authHeader));
     }
 
     @POST
     @Path("/auth/register")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyRegister(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostServiceAuth("register", body, authHeader);
+        return handleResponse(buildPost(pacientesUrl, "auth/register", body, authHeader));
     }
 
     @POST
     @Path("/auth/pre-registro-personal")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyPreRegistroPersonal(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostServiceAuth("pre-registro-personal", body, authHeader);
+        return handleResponse(buildPost(pacientesUrl, "auth/pre-registro-personal", body, authHeader));
     }
 
     @PUT
     @Path("/auth/pendientes/{id}/aprobar")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyAprobarPendiente(@PathParam("id") Long id, @HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(pacientesUrl)
-                .path("auth")
-                .path("pendientes")
-                .path(String.valueOf(id))
-                .path("aprobar")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.put(Entity.entity("", MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
+        return handleResponse(buildPut(pacientesUrl, "auth/pendientes/" + id + "/aprobar", authHeader));
     }
 
     // ============ PACIENTES ============
     @GET
     @Path("/pacientes")
-    @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPacientes")
-    @Retry(name = "pacientesService")
-    @TimeLimiter(name = "pacientesService")
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Retry(maxRetries = 3, delay = 500)
+    @Fallback(fallbackMethod = "fallbackPacientes")
     public Response getPacientes(@HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(pacientesUrl)
-                .path("pacientes")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return fallbackPacientes(authHeader, e);
-        }
+        return handleResponse(buildGet(pacientesUrl, "pacientes", authHeader));
     }
 
     public Response fallbackPacientes(String authHeader, Throwable t) {
@@ -177,21 +151,11 @@ public class GatewayResource {
 
     @GET
     @Path("/pacientes/{path:.*}")
-    @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPacientesPath")
-    @Retry(name = "pacientesService")
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Retry(maxRetries = 3, delay = 500)
+    @Fallback(fallbackMethod = "fallbackPacientesPath")
     public Response getPacientesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(pacientesUrl)
-                .path("pacientes")
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return fallbackPacientesPath(path, authHeader, e);
-        }
+        return handleResponse(buildGet(pacientesUrl, "pacientes/" + path, authHeader));
     }
 
     public Response fallbackPacientesPath(String path, String authHeader, Throwable t) {
@@ -202,20 +166,11 @@ public class GatewayResource {
 
     @POST
     @Path("/pacientes")
-    @Consumes(MediaType.WILDCARD)
-    @CircuitBreaker(name = "pacientesService", fallbackMethod = "fallbackPostPacientes")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Fallback(fallbackMethod = "fallbackPostPacientes")
     public Response postPacientes(String body, @HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(pacientesUrl)
-                .path("pacientes")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return fallbackPostPacientes(body, authHeader, e);
-        }
+        return handleResponse(buildPost(pacientesUrl, "pacientes", body, authHeader));
     }
 
     public Response fallbackPostPacientes(String body, String authHeader, Throwable t) {
@@ -227,21 +182,11 @@ public class GatewayResource {
     // ============ CITAS ============
     @GET
     @Path("/citas")
-    @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackCitas")
-    @Retry(name = "citasService")
-    @TimeLimiter(name = "citasService")
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Retry(maxRetries = 3, delay = 500)
+    @Fallback(fallbackMethod = "fallbackCitas")
     public Response getCitas(@HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(atencionUrl)
-                .path("citas")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return fallbackCitas(authHeader, e);
-        }
+        return handleResponse(buildGet(atencionUrl, "citas", authHeader));
     }
 
     public Response fallbackCitas(String authHeader, Throwable t) {
@@ -252,24 +197,12 @@ public class GatewayResource {
 
     @POST
     @Path("/citas")
-    @Consumes(MediaType.WILDCARD)
-    @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackPostCitas")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Fallback(fallbackMethod = "fallbackPostCitas")
     public Response postCitas(String body, @HeaderParam("Authorization") String authHeader,
             @HeaderParam("Idempotency-Key") String idempotencyKey) {
-        try {
-            var request = client.target(atencionUrl)
-                .path("citas")
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
-                request = request.header("Idempotency-Key", idempotencyKey);
-            }
-            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return fallbackPostCitas(body, authHeader, e);
-        }
+        return handleResponse(buildPost(atencionUrl, "citas", body, authHeader, idempotencyKey));
     }
 
     public Response fallbackPostCitas(String body, String authHeader, Throwable t) {
@@ -280,21 +213,11 @@ public class GatewayResource {
 
     @GET
     @Path("/citas/{path:.*}")
-    @CircuitBreaker(name = "citasService", fallbackMethod = "fallbackCitasPath")
-    @Retry(name = "citasService")
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Retry(maxRetries = 3, delay = 500)
+    @Fallback(fallbackMethod = "fallbackCitasPath")
     public Response getCitasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        try {
-            var request = client.target(atencionUrl)
-                .path("citas")
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return fallbackCitasPath(path, authHeader, e);
-        }
+        return handleResponse(buildGet(atencionUrl, "citas/" + path, authHeader));
     }
 
     public Response fallbackCitasPath(String path, String authHeader, Throwable t) {
@@ -306,143 +229,240 @@ public class GatewayResource {
     // ============ CONSULTAS ============
     @GET
     @Path("/consultas")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getConsultas(@HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("consultas", "", authHeader);
+        return handleResponse(buildGet(atencionUrl, "consultas", authHeader));
     }
 
     @GET
     @Path("/consultas/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getConsultasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("consultas", path, authHeader);
+        return handleResponse(buildGet(atencionUrl, "consultas/" + path, authHeader));
     }
 
     @POST
     @Path("/consultas")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postConsultas(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostService("consultas", body, authHeader);
+        return handleResponse(buildPost(atencionUrl, "consultas", body, authHeader));
     }
 
     // ============ RECETAS ============
     @GET
     @Path("/recetas")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getRecetas(@HeaderParam("Authorization") String authHeader) {
-        return proxyGet("recetas", authHeader);
+        return handleResponse(buildGet(recetasUrl, "recetas", authHeader));
     }
 
     @GET
     @Path("/recetas/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getRecetasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("recetas", path, authHeader);
+        return handleResponse(buildGet(recetasUrl, "recetas/" + path, authHeader));
     }
 
     @POST
     @Path("/recetas")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postRecetas(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPost("recetas", body, authHeader);
+        return handleResponse(buildPost(recetasUrl, "recetas", body, authHeader));
     }
 
     // ============ MEDICAMENTOS ============
     @GET
     @Path("/medicamentos")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getMedicamentos(@HeaderParam("Authorization") String authHeader) {
-        return proxyGet("medicamentos", authHeader);
+        return handleResponse(buildGet(farmaciaUrl, "medicamentos", authHeader));
     }
 
     @POST
     @Path("/medicamentos")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postMedicamentos(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPost("medicamentos", body, authHeader);
+        return handleResponse(buildPost(farmaciaUrl, "medicamentos", body, authHeader));
     }
 
     @GET
     @Path("/medicamentos/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getMedicamentosPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("medicamentos", path, authHeader);
+        return handleResponse(buildGet(farmaciaUrl, "medicamentos/" + path, authHeader));
     }
 
     // ============ DISPENSACIONES ============
     @GET
     @Path("/dispensaciones")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getDispensaciones(@HeaderParam("Authorization") String authHeader) {
-        return proxyGet("dispensaciones", authHeader);
+        return handleResponse(buildGet(farmaciaUrl, "dispensaciones", authHeader));
     }
 
     @POST
     @Path("/dispensaciones")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postDispensaciones(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPost("dispensaciones", body, authHeader);
+        return handleResponse(buildPost(farmaciaUrl, "dispensaciones", body, authHeader));
     }
 
     @GET
     @Path("/dispensaciones/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getDispensacionesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("dispensaciones", path, authHeader);
+        return handleResponse(buildGet(farmaciaUrl, "dispensaciones/" + path, authHeader));
     }
 
     // ============ COBROS ============
     @GET
     @Path("/cobros")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getCobros(@HeaderParam("Authorization") String authHeader) {
-        return proxyGet("cobros", authHeader);
+        return handleResponse(buildGet(cobrosUrl, "cobros", authHeader));
     }
 
     @GET
     @Path("/cobros/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getCobrosPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("cobros", path, authHeader);
+        return handleResponse(buildGet(cobrosUrl, "cobros/" + path, authHeader));
     }
 
     @POST
     @Path("/cobros")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postCobros(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPost("cobros", body, authHeader);
+        return handleResponse(buildPost(cobrosUrl, "cobros", body, authHeader));
     }
 
     // ============ NOTIFICACIONES ============
     @GET
     @Path("/notificaciones")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getNotificaciones(@HeaderParam("Authorization") String authHeader) {
-        return proxyGet("notificaciones", authHeader);
+        return handleResponse(buildGet(notificacionesUrl, "notificaciones", authHeader));
     }
 
     @GET
     @Path("/notificaciones/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response getNotificacionesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
-        return proxyGetService("notificaciones", path, authHeader);
+        return handleResponse(buildGet(notificacionesUrl, "notificaciones/" + path, authHeader));
     }
 
     @POST
     @Path("/notificaciones")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postNotificaciones(String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPost("notificaciones", body, authHeader);
+        return handleResponse(buildPost(notificacionesUrl, "notificaciones", body, authHeader));
     }
 
     @POST
     @Path("/notificaciones/{path:.*}")
-    @Consumes(MediaType.WILDCARD)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postNotificacionesPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
-        return proxyPostService("notificaciones", path, body, authHeader);
+        return handleResponse(buildPost(notificacionesUrl, "notificaciones/" + path, body, authHeader));
     }
 
-// Métodos auxiliares
-    private String getServiceUrl(String service) {
-        return switch (service) {
-            case "recetas" -> recetasUrl;
-            case "medicamentos" -> farmaciaUrl;
-            case "dispensaciones" -> farmaciaUrl;
-            case "cobros" -> cobrosUrl;
-            case "notificaciones" -> notificacionesUrl;
-            case "consultas" -> atencionUrl;
-            case "citas" -> atencionUrl;
-            case "auth" -> pacientesUrl;
-            default -> recetasUrl;
-        };
+    public Response fallbackAuth(String body, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio de autenticación no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackAuth(Long id, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio de autenticación no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackGenerico(String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackGenerico(String path, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackGenerico(String path, String body, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    // Métodos auxiliares sin try-catch para que FT annotations funcionen
+    private Response buildGet(String baseUrl, String path, String authHeader) {
+        var request = client.target(baseUrl)
+            .path(path)
+            .request(MediaType.APPLICATION_JSON);
+        if (authHeader != null && !authHeader.isEmpty()) {
+            request = request.header("Authorization", authHeader);
+        }
+        return request.get();
+    }
+
+    private Response buildPost(String baseUrl, String path, String body, String authHeader) {
+        var request = client.target(baseUrl)
+            .path(path)
+            .request(MediaType.APPLICATION_JSON);
+        if (authHeader != null && !authHeader.isEmpty()) {
+            request = request.header("Authorization", authHeader);
+        }
+        return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+    }
+
+    private Response buildPost(String baseUrl, String path, String body, String authHeader, String idempotencyKey) {
+        var request = client.target(baseUrl)
+            .path(path)
+            .request(MediaType.APPLICATION_JSON);
+        if (authHeader != null && !authHeader.isEmpty()) {
+            request = request.header("Authorization", authHeader);
+        }
+        if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
+            request = request.header("Idempotency-Key", idempotencyKey);
+        }
+        return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+    }
+
+    private Response buildPut(String baseUrl, String path, String authHeader) {
+        var request = client.target(baseUrl)
+            .path(path)
+            .request(MediaType.APPLICATION_JSON);
+        if (authHeader != null && !authHeader.isEmpty()) {
+            request = request.header("Authorization", authHeader);
+        }
+        return request.put(Entity.entity("", MediaType.APPLICATION_JSON));
     }
 
     private Response handleResponse(Response response) {
@@ -454,110 +474,5 @@ public class GatewayResource {
                 .build();
         }
         return response;
-    }
-
-    private Response proxyGetService(String service, String path, String authHeader) {
-        try {
-            String baseUrl = getServiceUrl(service);
-            var request = client.target(baseUrl)
-                .path(service)
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-
-    private Response proxyPostServiceAuth(String path, String body, String authHeader) {
-        try {
-            String baseUrl = getServiceUrl("auth");
-            var request = client.target(baseUrl)
-                .path("auth")
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-
-    private Response proxyPostService(String service, String body, String authHeader) {
-        try {
-            String baseUrl = getServiceUrl(service);
-            var request = client.target(baseUrl)
-                .path(service)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-
-    private Response proxyPostService(String service, String path, String body, String authHeader) {
-        try {
-            String baseUrl = getServiceUrl(service);
-            var request = client.target(baseUrl)
-                .path(service)
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-
-    private Response proxyGet(String path, String authHeader) {
-        try {
-            String baseUrl = getServiceUrl(path);
-            var request = client.target(baseUrl)
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.get());
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
-    }
-
-    private Response proxyPost(String path, String body, String authHeader) {
-        try {
-            String baseUrl = getServiceUrl(path);
-            var request = client.target(baseUrl)
-                .path(path)
-                .request(MediaType.APPLICATION_JSON);
-            if (authHeader != null && !authHeader.isEmpty()) {
-                request = request.header("Authorization", authHeader);
-            }
-            return handleResponse(request.post(Entity.entity(body, MediaType.APPLICATION_JSON)));
-        } catch (Exception e) {
-            return Response.serverError()
-                .entity("{\"error\":\"Error del servidor\",\"mensaje\":\"" + e.getMessage() + "\"}")
-                .build();
-        }
     }
 }

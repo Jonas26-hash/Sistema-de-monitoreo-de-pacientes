@@ -58,6 +58,6 @@ public class Usuario extends PanacheEntity {
     }
 
     public static List<Usuario> findByRole(String rol) {
-        return list("roles ?1 and activo = true", Rol.valueOf(rol));
+        return list("?1 MEMBER OF roles and activo = true", Rol.valueOf(rol));
     }
 }

@@ -23,15 +23,25 @@ public class MedicamentoResource {
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
-    public Medicamento buscar(@PathParam("id") Long id) {
-        return Medicamento.findById(id);
+    public Response buscar(@PathParam("id") Long id) {
+        Medicamento med = Medicamento.findById(id);
+        if (med == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Medicamento no encontrado\"}").build();
+        }
+        return Response.ok(med).build();
     }
 
     @GET
     @Path("/codigo/{codigo}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
-    public Medicamento buscarPorCodigo(@PathParam("codigo") String codigo) {
-        return Medicamento.find("codigo", codigo).firstResult();
+    public Response buscarPorCodigo(@PathParam("codigo") String codigo) {
+        Medicamento med = Medicamento.find("codigo", codigo).firstResult();
+        if (med == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Medicamento no encontrado\"}").build();
+        }
+        return Response.ok(med).build();
     }
 
     @POST
@@ -48,7 +58,8 @@ public class MedicamentoResource {
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
     public Response actualizar(@PathParam("id") Long id, @Valid Medicamento med) {
         Medicamento m = Medicamento.findById(id);
-        if (m == null) return Response.status(Response.Status.NOT_FOUND).build();
+        if (m == null) return Response.status(Response.Status.NOT_FOUND)
+            .entity("{\"error\":\"Medicamento no encontrado\"}").build();
         m.nombre = med.nombre;
         m.descripcion = med.descripcion;
         m.stock = med.stock;

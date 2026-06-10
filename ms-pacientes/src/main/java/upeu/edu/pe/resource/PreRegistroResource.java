@@ -1,5 +1,6 @@
 package upeu.edu.pe.resource;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -15,6 +16,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.mindrot.jbcrypt.BCrypt;
 import upeu.edu.pe.Paciente;
@@ -36,6 +38,9 @@ public class PreRegistroResource {
 
     @Inject @RestClient
     NotificacionesClient notificacionesClient;
+
+    @Inject
+    ObjectMapper mapper;
 
     @POST
     @Path("/pre-registro")
@@ -80,7 +85,7 @@ public class PreRegistroResource {
         pendiente.persist();
 
         try {
-            String body = "{\"to\":\"" + request.email + "\",\"codigo\":\"" + codigo + "\"}";
+            String body = mapper.writeValueAsString(Map.of("to", request.email, "codigo", codigo));
             notificacionesClient.enviarCorreo(body);
         } catch (Exception e) {
             // Email service error logged, user can request resend
@@ -145,7 +150,7 @@ public class PreRegistroResource {
         pendiente.persist();
 
         try {
-            String body = "{\"to\":\"" + request.email + "\",\"codigo\":\"" + codigo + "\"}";
+            String body = mapper.writeValueAsString(Map.of("to", request.email, "codigo", codigo));
             notificacionesClient.enviarCorreo(body);
         } catch (Exception e) {
             // Email service error logged, user can request resend
@@ -247,7 +252,7 @@ public class PreRegistroResource {
             : "Registro exitoso. Tu cuenta está pendiente de aprobación por un administrador.";
 
         return Response.status(Response.Status.CREATED)
-            .entity("{\"mensaje\":\"" + mensaje + "\"}")
+            .entity(mapper.createObjectNode().put("mensaje", mensaje))
             .build();
     }
 }

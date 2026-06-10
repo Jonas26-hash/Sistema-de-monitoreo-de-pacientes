@@ -38,9 +38,9 @@ public class AuthService {
             usuario.persist();
         }
 
-        Set<String> rolesSet = usuario.roles.stream()
-            .map(Rol::name)
-            .collect(Collectors.toSet());
+        Set<String> rolesSet = usuario.roles != null
+            ? usuario.roles.stream().map(Rol::name).collect(Collectors.toSet())
+            : Set.of();
 
         String rolesString = String.join(" ", rolesSet);
 

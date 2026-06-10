@@ -23,16 +23,26 @@ public class PacienteResource {
 
     @GET
     @Path("/{id}")
-    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
-    public Paciente buscar(@PathParam("id") Long id) {
-        return Paciente.findById(id);
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
+    public Response buscar(@PathParam("id") Long id) {
+        Paciente paciente = Paciente.findById(id);
+        if (paciente == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Paciente no encontrado\"}").build();
+        }
+        return Response.ok(paciente).build();
     }
 
     @GET
     @Path("/dni/{dni}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public Paciente buscarPorDni(@PathParam("dni") String dni) {
-        return Paciente.find("dni = ?1 and activo = ?2", dni, true).firstResult();
+    public Response buscarPorDni(@PathParam("dni") String dni) {
+        Paciente paciente = Paciente.find("dni = ?1 and activo = ?2", dni, true).firstResult();
+        if (paciente == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Paciente no encontrado\"}").build();
+        }
+        return Response.ok(paciente).build();
     }
 
     @POST
