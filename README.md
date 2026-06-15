@@ -187,47 +187,47 @@ docker compose up -d db-pacientes db-atencion db-recetas db-farmacia db-cobros d
 Luego iniciar cada servicio en una terminal separada:
 
 ```powershell
-cd ms-config-server
+cd backend/ms-config-server
 .\mvnw.cmd spring-boot:run
 ```
 
 ```powershell
-cd ms-registry-server
+cd backend/ms-registry-server
 .\mvnw.cmd spring-boot:run
 ```
 
 ```powershell
-cd ms-pacientes
+cd backend/ms-pacientes
 .\mvnw.cmd quarkus:dev
 ```
 
 ```powershell
-cd ms-atencion
+cd backend/ms-atencion
 .\mvnw.cmd quarkus:dev
 ```
 
 ```powershell
-cd ms-recetas
+cd backend/ms-recetas
 .\mvnw.cmd quarkus:dev
 ```
 
 ```powershell
-cd ms-farmacia
+cd backend/ms-farmacia
 .\mvnw.cmd quarkus:dev
 ```
 
 ```powershell
-cd ms-cobros
+cd backend/ms-cobros
 .\mvnw.cmd quarkus:dev
 ```
 
 ```powershell
-cd ms-notificaciones
+cd backend/ms-notificaciones
 .\mvnw.cmd quarkus:dev
 ```
 
 ```powershell
-cd api-gateway
+cd backend/api-gateway
 .\mvnw.cmd quarkus:dev
 ```
 
