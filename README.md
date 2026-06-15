@@ -552,8 +552,3 @@ Importa `postman-collection.json` en Postman:
 ## Licencia
 
 Este proyecto está bajo licencia **MIT**. Ver [LICENSE](LICENSE) para más detalles.
-
-## Contacto & Soporte
-
-**Repositorio:** https://github.com/Jonas26-hash/Sistema-de-monitoreo-de-pacientes  
-**Issues:** Reporta bugs o sugerencias en GitHub Issues
