@@ -1,0 +1,8 @@
+# CODEOWNERS file
+# Cualquier cambio a la rama main requiere aprobacion
+
+* @Jonas26-hash
+/backend/* @Jonas26-hash
+/frontend/* @Jonas26-hash
+/docker-compose.yml @Jonas26-hash
+/.github/* @Jonas26-hash

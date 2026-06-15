@@ -549,6 +549,10 @@ Importa `postman-collection.json` en Postman:
 | **CAJERO** | Procesar cobros, generar facturas |
 | **ADMIN** | Acceso total (CRUD usuarios, roles, tarifario, campañas, auditoría) |
 
+## Licencia
+
+Este proyecto está bajo licencia **MIT**. Ver [LICENSE](LICENSE) para más detalles.
+
 ## Contacto & Soporte
 
 **Repositorio:** https://github.com/Jonas26-hash/Sistema-de-monitoreo-de-pacientes  
