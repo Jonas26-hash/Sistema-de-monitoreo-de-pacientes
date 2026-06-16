@@ -479,7 +479,7 @@ export default function Cobros() {
               <Divider style={{ margin: '16px 0' }} />
 
               <Text style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)' }}>
-                El paciente escanea el QR, paga con Yape y muestra su comprobante al cajero
+                El paciente escanea el QR, paga con Yape y muestra su comprobante a atención al cliente
               </Text>
             </div>
 

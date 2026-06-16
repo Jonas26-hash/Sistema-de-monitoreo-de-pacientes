@@ -183,56 +183,6 @@ El sistema carga automáticamente 5 usuarios al iniciar si la BD está vacía:
 
 Puedes hacer login con cualquiera de estas credenciales en http://localhost:3000
 
-### Registrar nuevos usuarios (si necesario)
-
-Para registrar un usuario nuevo:
-
-```http
-POST http://localhost:8080/auth/register
-Content-Type: application/json
-```
-
-Body:
-```json
-{
-  "username": "nuevousuario",
-  "password": "MiPassword123!",
-  "email": "nuevo@clinica.com",
-  "nombres": "Juan",
-  "apellidos": "Pérez",
-  "dni": "12345678",
-  "telefono": "987654321"
-}
-```
-
-Luego hacer login:
-
-```http
-POST http://localhost:8080/auth/login
-Content-Type: application/json
-```
-
-Body:
-```json
-{
-  "username": "nuevousuario",
-  "password": "MiPassword123!"
-}
-```
-
-Respuesta:
-```json
-{
-  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "usuario": {
-    "id": 6,
-    "username": "nuevousuario",
-    "email": "nuevo@clinica.com",
-    "roles": ["PACIENTE"]
-  }
-}
-```
-
 Para endpoints protegidos, usa el header:
 ```
 Authorization: Bearer <TOKEN>
@@ -363,7 +313,7 @@ Abre http://localhost:5173 en tu navegador. Los cambios en `frontend/src/` se re
 | **Recetas** | `/recetas` | Emisión de recetas médicas | DOCTOR |
 | **Dispensaciones** | `/dispensaciones` | Entrega de medicamentos con email | FARMACEUTICO |
 | **Medicamentos** | `/medicamentos` | CRUD de inventario farmacéutico | FARMACEUTICO |
-| **Cobros** | `/cobros` | Pago único con QR Yape | CAJERO |
+| **Cobros** | `/cobros` | Pago único con QR Yape | ATENCION_CLIENTE |
 | **Tarifario** | `/tarifario` | Catálogo de servicios y precios | ADMIN |
 | **Campañas** | `/campanias` | Campañas con descuentos % | ADMIN |
 | **Auditoría** | `/auditoria` | Log de todas las acciones del sistema | ADMIN |
@@ -545,8 +495,7 @@ Importa `postman-collection.json` en Postman:
 | **DOCTOR** | Ver pacientes, gestionar citas, crear consultas, emitir recetas, ver órdenes examen |
 | **ENFERMERO** | Realizar triaje (signos vitales) |
 | **FARMACEUTICO** | Gestionar medicamentos, dispensar recetas, ver inventario |
-| **ATENCION_CLIENTE** | Agendar citas, gestionar datos de pacientes |
-| **CAJERO** | Procesar cobros, generar facturas |
+| **ATENCION_CLIENTE** | Agendar citas, gestionar pacientes, procesar cobros |
 | **ADMIN** | Acceso total (CRUD usuarios, roles, tarifario, campañas, auditoría) |
 
 ## Licencia
