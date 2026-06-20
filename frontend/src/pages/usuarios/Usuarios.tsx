@@ -3,9 +3,11 @@ import { Table, Button, Modal, Form, Input, Select, Tag, Space, Input as SearchI
 import { PlusOutlined, EditOutlined, StopOutlined, CheckCircleOutlined, SearchOutlined, UserOutlined, MailOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCrud } from '../../hooks/useCrud';
+import { showCrudSuccess } from '../../utils/notifications';
 import type { User } from '../../types';
 import api from '../../services/api';
 import SuccessModal from '../../components/common/SuccessModal';
+import PhoneInput from '../../components/common/PhoneInput';
 
 const { Title, Text } = Typography;
 
@@ -82,7 +84,7 @@ export default function Usuarios() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Usuario', key: 'nombre', render: (_: unknown, r: User) => <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{r.nombres} {r.apellidos}</Text> },
     { title: 'Email', dataIndex: 'email', key: 'email', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     { title: 'Username', dataIndex: 'username', key: 'username', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
@@ -120,12 +122,15 @@ export default function Usuarios() {
   ];
 
   const handleCreateUser = async (values: User) => {
-    const esPaciente = values.rol === 'PACIENTE';
-    if (esPaciente) {
-      handleSave({ ...values, password: 'MedTrack2026' } as User);
-    } else {
-      setCreatingWorker(true);
-      try {
+    setCreatingWorker(true);
+    try {
+      if (values.rol === 'PACIENTE') {
+        await api.post('/auth/register', { ...values, password: 'MedTrack2026' });
+        queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+        showCrudSuccess('creado');
+        closeModal();
+        form.resetFields();
+      } else {
         await api.post('/auth/pre-registro-personal', {
           email: values.email,
           nombres: values.nombres,
@@ -142,12 +147,12 @@ export default function Usuarios() {
         });
         closeModal();
         form.resetFields();
-      } catch (err: unknown) {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al enviar código';
-        message.error(msg);
-      } finally {
-        setCreatingWorker(false);
       }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al crear usuario';
+      message.error(msg);
+    } finally {
+      setCreatingWorker(false);
     }
   };
 
@@ -186,7 +191,19 @@ export default function Usuarios() {
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Usuario' : 'Nuevo Usuario'}</Text>}
         open={modalOpen} onCancel={closeModal} onOk={() => form.submit()} okText={editing ? 'Actualizar' : 'Crear'} width={640} destroyOnClose
-        styles={{ body: { padding: '24px 28px' } }}>
+        okButtonProps={{ loading: creatingWorker, disabled: creatingWorker }}
+        cancelButtonProps={{ disabled: creatingWorker }}
+        styles={{ body: { padding: '24px 28px', position: 'relative' } }}>
+        {creatingWorker && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: 'color-mix(in srgb, var(--bg-card) 92%, transparent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 12,
+          }}>
+            <img src="/lottie/Load.svg" alt="Enviando..." style={{ width: 200, height: 'auto' }} />
+          </div>
+        )}
         <Form form={form} layout="vertical" onFinish={editing ? handleSave : handleCreateUser} initialValues={editing || { rol: 'DOCTOR' }} preserve={false}
           style={{ width: '100%' }}>
           <div style={{ display: 'flex', gap: 16 }}>
@@ -199,14 +216,14 @@ export default function Usuarios() {
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]} style={{ width: '50%' }}>
-              <Input prefix={<MailOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="email@hospital.com" />
+              <Input prefix={<MailOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="email@clinica.com" />
             </Form.Item>
             {!editing && (
               <Form.Item noStyle shouldUpdate={(prev, cur) => prev.rol !== cur.rol}>
                 {({ getFieldValue }) => {
                   const rol = getFieldValue('rol');
                   return rol !== 'PACIENTE' ? null : (
-                    <Form.Item name="username" label="Username" rules={[{ required: true }]} style={{ width: '50%' }}>
+                    <Form.Item name="username" label="Username" rules={[{ required: true }, { pattern: /^[a-zA-Z0-9_]{3,50}$/, message: 'Solo letras, números y guión bajo (3-50 caracteres)' }]} style={{ width: '50%' }}>
                       <Input placeholder="ej: jperez" />
                     </Form.Item>
                   );
@@ -224,7 +241,7 @@ export default function Usuarios() {
               <Input placeholder="12345678" maxLength={8} />
             </Form.Item>
             <Form.Item name="telefono" label="Teléfono" style={{ width: '50%' }}>
-              <Input placeholder="+51 999 999 999" />
+              <PhoneInput />
             </Form.Item>
           </div>
           {!editing && (

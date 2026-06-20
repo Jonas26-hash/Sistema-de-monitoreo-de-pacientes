@@ -44,4 +44,8 @@ public class RegistroPendiente extends PanacheEntity {
 
     @Column(nullable = false)
     public LocalDateTime creadoEn;
+
+    public String passwordHash;
+
+    public String username;
 }

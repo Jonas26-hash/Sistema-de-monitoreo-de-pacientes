@@ -5,6 +5,7 @@ import Register from './pages/register/Register';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingAnimation from './components/common/LoadingAnimation';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Usuarios = lazy(() => import('./pages/usuarios/Usuarios'));
@@ -29,6 +30,7 @@ const Offline = lazy(() => import('./pages/Offline'));
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Suspense fallback={<LoadingAnimation />}>
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -44,7 +46,7 @@ export default function App() {
         >
           <Route path="/" element={<Dashboard />} />
           <Route path="/usuarios" element={<ProtectedRoute roles={['ADMIN']}><Usuarios /></ProtectedRoute>} />
-          <Route path="/pacientes" element={<Pacientes />} />
+          <Route path="/pacientes" element={<ProtectedRoute roles={['ADMIN','ATENCION_CLIENTE']}><Pacientes /></ProtectedRoute>} />
           <Route path="/citas" element={<Citas />} />
           <Route path="/triaje" element={<ProtectedRoute roles={['ADMIN','ENFERMERO']}><Triaje /></ProtectedRoute>} />
           <Route path="/consultas" element={<ProtectedRoute roles={['ADMIN','DOCTOR']}><Consultas /></ProtectedRoute>} />
@@ -63,6 +65,7 @@ export default function App() {
         <Route path="*" element={<NotFound404 />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   );
 }
 

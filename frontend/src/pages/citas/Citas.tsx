@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Table, Button, Modal, Form, Input, DatePicker, Select, Tag, Space, Typography, message, InputNumber } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, UserOutlined, MedicineBoxOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, DatePicker, Select, Tag, Space, Typography, message } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, UserOutlined, MedicineBoxOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCrud } from '../../hooks/useCrud';
 import { showCrudSuccess } from '../../utils/notifications';
@@ -44,6 +44,9 @@ export default function Citas() {
   const [selectedPaciente, setSelectedPaciente] = useState<Paciente | null>(null);
   const [fechaHora, setFechaHora] = useState<string | null>(null);
   const [doctoresOcupados, setDoctoresOcupados] = useState<number[]>([]);
+  const [completingProfile, setCompletingProfile] = useState(false);
+  const [profileForm] = Form.useForm();
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const { data: doctoresDisponibles } = useQuery({
     queryKey: ['doctores-disponibles', fechaHora],
@@ -80,26 +83,50 @@ export default function Citas() {
     },
   });
 
+  const isProfileComplete = (p: Paciente) => p.fechaNacimiento && p.genero && p.direccion;
+
   const handlePatientSelect = useCallback((p: Paciente) => {
     setSelectedPaciente(p);
     createForm.setFieldValue('dni', p.dni);
-  }, [createForm]);
+    if (!isProfileComplete(p)) {
+      profileForm.setFieldsValue({ fechaNacimiento: p.fechaNacimiento ? dayjs(p.fechaNacimiento) : null, genero: p.genero || undefined, direccion: p.direccion || '' });
+      setCompletingProfile(true);
+    }
+  }, [createForm, profileForm]);
+
+  const handleProfileComplete = useCallback(async () => {
+    if (!selectedPaciente) return;
+    try {
+      const values = await profileForm.validateFields();
+      setSavingProfile(true);
+      await api.put(`/pacientes/${selectedPaciente.id}`, {
+        ...selectedPaciente,
+        fechaNacimiento: values.fechaNacimiento ? dayjs(values.fechaNacimiento).format('YYYY-MM-DD') : null,
+        genero: values.genero || null,
+        direccion: values.direccion || null,
+      });
+      setSelectedPaciente({ ...selectedPaciente, fechaNacimiento: values.fechaNacimiento, genero: values.genero, direccion: values.direccion });
+      setCompletingProfile(false);
+      showCrudSuccess('actualizado', 'Perfil del paciente');
+    } catch {
+      if (!(await profileForm.validateFields().catch(() => false))) return;
+    } finally {
+      setSavingProfile(false);
+    }
+  }, [selectedPaciente, profileForm]);
 
   const handleFechaHoraChange = useCallback((date: dayjs.Dayjs | null) => {
     if (date) {
-      const iso = date.toISOString();
-      setFechaHora(iso);
-      createForm.setFieldValue('fechaHora', iso);
+      setFechaHora(date.toISOString());
     } else {
       setFechaHora(null);
-      createForm.setFieldValue('fechaHora', null);
     }
-  }, [createForm]);
+  }, []);
 
   const handleCreateSubmit = useCallback(async () => {
     try {
       const values = await createForm.validateFields();
-      crearMutation.mutate(values);
+      crearMutation.mutate({ ...values, fechaHora: values.fechaHora?.toISOString?.() ?? values.fechaHora });
     } catch { }
   }, [createForm, crearMutation]);
 
@@ -112,7 +139,7 @@ export default function Citas() {
   }, [createForm]);
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Cita) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; } },
     { title: 'Doctor', key: 'doctorId', render: (v: unknown, r: Cita) => { const d = (doctores || []).find(d => d.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}{d.especialidad ? ` (${d.especialidad})` : ''}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
     { title: 'Fecha', dataIndex: 'fechaHora', key: 'fechaHora', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</Text> },
@@ -243,6 +270,36 @@ export default function Citas() {
 
           <Form.Item name="observaciones" label="Observaciones">
             <Input.TextArea rows={2} placeholder="Observaciones adicionales" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Completar Perfil del Paciente</Text>}
+        open={completingProfile}
+        onCancel={() => setCompletingProfile(false)}
+        onOk={handleProfileComplete}
+        okText="Guardar y Continuar"
+        okButtonProps={{ loading: savingProfile }}
+        cancelText="Cancelar"
+        width={500}
+        destroyOnClose
+        styles={{ body: { padding: '24px 28px' } }}>
+        <Text style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 20 }}>
+          El paciente no tiene datos completos. Complete los siguientes campos obligatorios para continuar:
+        </Text>
+        <Form form={profileForm} layout="vertical" preserve={false} style={{ width: '100%' }}>
+          <Form.Item name="fechaNacimiento" label="Fecha de Nacimiento" rules={[{ required: true, message: 'Requerido' }]}>
+            <DatePicker style={{ width: '100%', borderRadius: 10 }} placeholder="Seleccione fecha" />
+          </Form.Item>
+          <Form.Item name="genero" label="Género" rules={[{ required: true, message: 'Requerido' }]}>
+            <Select placeholder="Seleccione género" style={{ borderRadius: 10 }}>
+              <Select.Option value="MASCULINO">Masculino</Select.Option>
+              <Select.Option value="FEMENINO">Femenino</Select.Option>
+              <Select.Option value="OTRO">Otro</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="direccion" label="Dirección" rules={[{ required: true, message: 'Requerido' }]}>
+            <Input.TextArea rows={2} placeholder="Dirección" style={{ borderRadius: 10 }} />
           </Form.Item>
         </Form>
       </Modal>

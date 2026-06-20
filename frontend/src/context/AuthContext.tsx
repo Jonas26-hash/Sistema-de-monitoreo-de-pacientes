@@ -6,6 +6,8 @@ export interface AuthUser {
   username: string;
   email?: string;
   roles: string[];
+  nombres?: string;
+  apellidos?: string;
 }
 
 interface AuthContextType {
@@ -15,6 +17,7 @@ interface AuthContextType {
   login: (data: LoginRequest) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<AuthUser>) => void;
+  setAuthFromToken: (token: string) => void;
   isAuthenticated: boolean;
   hasRole: (role: string) => boolean;
 }
@@ -33,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       const decoded = decodeToken(token);
       if (decoded) {
-        const u: AuthUser = { username: decoded.sub, email: decoded.email, roles: decoded.roles };
+        const u: AuthUser = { username: decoded.sub, email: decoded.email, roles: decoded.roles, nombres: decoded.nombres, apellidos: decoded.apellidos };
         setUser(u);
         localStorage.setItem('auth_user', JSON.stringify(u));
       }
@@ -47,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('auth_token', res.token);
       setToken(res.token);
       const decoded = decodeToken(res.token);
-      const u: AuthUser = { username: decoded?.sub || res.username, email: decoded?.email || res.email, roles: decoded?.roles || res.roles };
+      const u: AuthUser = { username: decoded?.sub || res.username, email: decoded?.email || res.email, roles: decoded?.roles || res.roles, nombres: decoded?.nombres, apellidos: decoded?.apellidos };
       setUser(u);
       localStorage.setItem('auth_user', JSON.stringify(u));
     } finally {
@@ -73,8 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setAuthFromToken = useCallback((newToken: string) => {
+    localStorage.setItem('auth_token', newToken);
+    setToken(newToken);
+    const decoded = decodeToken(newToken);
+    if (decoded) {
+      const u: AuthUser = { username: decoded.sub, email: decoded.email, roles: decoded.roles, nombres: decoded.nombres, apellidos: decoded.apellidos };
+      setUser(u);
+      localStorage.setItem('auth_user', JSON.stringify(u));
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser, isAuthenticated: !!token, hasRole }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser, setAuthFromToken, isAuthenticated: !!token, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

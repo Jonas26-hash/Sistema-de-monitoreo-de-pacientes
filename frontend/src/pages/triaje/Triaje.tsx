@@ -88,7 +88,7 @@ export default function Triajes() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Triaje) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Tag style={{ borderRadius: 4 }}>#{r.pacienteId}</Tag>; } },
     { title: 'Peso', dataIndex: 'peso', key: 'peso', render: (v: number) => v ? <Text style={{ color: 'var(--text-secondary)' }}>{v} kg</Text> : '-' },
     { title: 'Talla', dataIndex: 'talla', key: 'talla', render: (v: number) => v ? <Text style={{ color: 'var(--text-secondary)' }}>{v} m</Text> : '-' },
@@ -136,7 +136,7 @@ export default function Triajes() {
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Triaje' : 'Nuevo Triaje'}</Text>}
         open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null); }} onOk={() => form.submit()} okText={editing ? 'Actualizar' : 'Registrar'} width={640} destroyOnClose
         styles={{ body: { padding: '24px 28px' } }}>
-        <Form form={form} layout="vertical" onFinish={(v) => editing ? updateMutation.mutate({ ...v, id: editing.id }) : createMutation.mutate(v)} preserve={false}
+        <Form form={form} layout="vertical" onFinish={(v) => { const p = { ...v, fechaTriaje: v.fechaTriaje?.toISOString?.() ?? v.fechaTriaje }; editing ? updateMutation.mutate({ ...p, id: editing.id }) : createMutation.mutate(p); }} preserve={false}
           style={{ width: '100%' }}>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="pacienteId" label="Paciente" rules={[{ required: true }]} style={{ width: '33%' }}>
@@ -146,7 +146,7 @@ export default function Triajes() {
               <InputNumber min={1} style={{ width: '100%' }} placeholder="Auto" disabled />
             </Form.Item>
             <Form.Item name="fechaTriaje" label="Fecha" style={{ width: '34%' }}>
-              <DatePicker showTime style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaTriaje', d.toISOString()); }} />
+              <DatePicker showTime style={{ width: '100%' }} />
             </Form.Item>
           </div>
           <Form.Item name="enfermeroId" hidden><Input /></Form.Item>

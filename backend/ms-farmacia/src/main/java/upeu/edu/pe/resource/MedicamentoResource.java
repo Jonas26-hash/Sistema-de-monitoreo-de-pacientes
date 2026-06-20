@@ -1,12 +1,13 @@
 package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
-import jakarta.transaction.Transactional;
+import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import upeu.edu.pe.entity.Medicamento;
+import upeu.edu.pe.service.MedicamentoService;
 import java.util.List;
 
 @Path("/medicamentos")
@@ -14,57 +15,55 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class MedicamentoResource {
 
+    @Inject
+    MedicamentoService service;
+
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
     public List<Medicamento> listar() {
-        return Medicamento.listAll();
+        return service.listar();
     }
 
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
     public Response buscar(@PathParam("id") Long id) {
-        Medicamento med = Medicamento.findById(id);
-        if (med == null) {
+        try {
+            return Response.ok(service.buscar(id)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Medicamento no encontrado\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.ok(med).build();
     }
 
     @GET
     @Path("/codigo/{codigo}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
     public Response buscarPorCodigo(@PathParam("codigo") String codigo) {
-        Medicamento med = Medicamento.find("codigo", codigo).firstResult();
-        if (med == null) {
+        try {
+            return Response.ok(service.buscarPorCodigo(codigo)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Medicamento no encontrado\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.ok(med).build();
     }
 
     @POST
-    @Transactional
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
     public Response crear(@Valid Medicamento medicamento) {
-        medicamento.persist();
-        return Response.status(Response.Status.CREATED).entity(medicamento).build();
+        return Response.status(Response.Status.CREATED)
+            .entity(service.crear(medicamento)).build();
     }
 
     @PUT
     @Path("/{id}")
-    @Transactional
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
     public Response actualizar(@PathParam("id") Long id, @Valid Medicamento med) {
-        Medicamento m = Medicamento.findById(id);
-        if (m == null) return Response.status(Response.Status.NOT_FOUND)
-            .entity("{\"error\":\"Medicamento no encontrado\"}").build();
-        m.nombre = med.nombre;
-        m.descripcion = med.descripcion;
-        m.stock = med.stock;
-        m.stockMinimo = med.stockMinimo;
-        m.precio = med.precio;
-        return Response.ok(m).build();
+        try {
+            return Response.ok(service.actualizar(id, med)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        }
     }
 }

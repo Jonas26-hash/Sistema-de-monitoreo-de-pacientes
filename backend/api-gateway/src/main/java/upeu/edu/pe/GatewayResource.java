@@ -116,6 +116,14 @@ public class GatewayResource {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/register", body, authHeader));
     }
 
+    @GET
+    @Path("/auth/profile")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuthProfile")
+    public Response getAuthProfile(@HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-pacientes"), "auth/profile", authHeader));
+    }
+
     @PUT
     @Path("/auth/profile")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -240,6 +248,22 @@ public class GatewayResource {
     public Response fallbackPostPacientes(String body, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"No se pudo crear el paciente\",\"mensaje\":\"Servicio no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    @PUT
+    @Path("/pacientes/{path:.*}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackPutPacientesPath")
+    public Response putPacientesPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPut(url("ms-pacientes"), "pacientes/" + path, body, authHeader));
+    }
+
+    public Response fallbackPutPacientesPath(String path, String body, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"No se pudo actualizar el paciente\",\"mensaje\":\"Servicio no disponible\",\"type\":\"FALLBACK\"}")
             .build();
     }
 
@@ -622,6 +646,12 @@ public class GatewayResource {
     public Response fallbackGenerico(String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackAuthProfile(String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio de perfil no disponible\",\"type\":\"FALLBACK\"}")
             .build();
     }
 

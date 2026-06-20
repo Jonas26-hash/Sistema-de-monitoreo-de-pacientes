@@ -340,7 +340,13 @@ select {
 }
 
 .ant-modal .ant-modal-title,
+.ant-modal-confirm-body .ant-modal-confirm-title,
+.ant-modal-confirm-body .ant-modal-confirm-content,
 .ant-form-item-label > label {
+  color: var(--text-primary) !important;
+}
+
+.ant-message-notice-content {
   color: var(--text-primary) !important;
 }
 

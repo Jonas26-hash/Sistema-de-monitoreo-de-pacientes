@@ -92,7 +92,7 @@ export default function Recetas() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Receta) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; } },
     { title: 'Doctor', key: 'doctorId', render: (v: unknown, r: Receta) => { const d = usuarios?.find(u => u.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
     { title: 'Medicamentos', dataIndex: 'medicamentos', key: 'medicamentos', ellipsis: true, render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
@@ -161,10 +161,10 @@ export default function Recetas() {
           </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="fechaEmision" label="Fecha de Emisión" rules={[{ required: true }]} style={{ width: '50%' }}>
-              <DatePicker style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaEmision', d.toISOString()); }} />
+              <DatePicker style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="fechaVigencia" label="Vigencia Hasta" style={{ width: '50%' }}>
-              <DatePicker style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaVigencia', d.toISOString()); }} />
+              <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </div>
           <Form.Item name="dispensada" label="Dispensada" valuePropName="checked">

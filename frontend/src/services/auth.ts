@@ -18,7 +18,7 @@ export async function register(data: {
   return res.data;
 }
 
-export function decodeToken(token: string): { sub: string; roles: string[]; email?: string } | null {
+export function decodeToken(token: string): { sub: string; roles: string[]; email?: string; nombres?: string; apellidos?: string } | null {
   try {
     const payload = token.split('.')[1];
     const decoded = JSON.parse(atob(payload));
@@ -34,6 +34,8 @@ export function decodeToken(token: string): { sub: string; roles: string[]; emai
       sub: decoded.sub || decoded.username || '',
       roles,
       email: decoded.email,
+      nombres: decoded.nombres,
+      apellidos: decoded.apellidos,
     };
   } catch {
     return null;

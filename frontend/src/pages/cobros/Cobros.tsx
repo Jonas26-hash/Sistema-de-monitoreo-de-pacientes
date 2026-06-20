@@ -226,7 +226,7 @@ export default function Cobros() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     {
       title: 'Paciente', key: 'paciente', dataIndex: 'pacienteId',
       render: (v: number) => { const p = pacienteMap.get(v); return <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p ? `${p.nombres} ${p.apellidoPaterno}` : `#${v}`}</Text>; },
@@ -303,7 +303,7 @@ export default function Cobros() {
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="fechaCobro" label="Fecha de Cobro" style={{ width: '50%' }}>
-              <DatePicker style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaCobro', d.toISOString()); }} />
+              <DatePicker style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="estado" label="Estado" style={{ width: '50%' }}>
               <Select>

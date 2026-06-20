@@ -122,7 +122,7 @@ export default function Examenes() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: OrdenExamen) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Tag style={{ borderRadius: 4 }}>#{r.pacienteId}</Tag>; } },
     { title: 'Tipo', dataIndex: 'tipo', key: 'tipo', render: (v: string) => <Tag color={typeColors[v]} style={{ borderRadius: 4 }}>{v}</Tag> },
     { title: 'Descripción', dataIndex: 'descripcion', key: 'descripcion', ellipsis: true, render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },

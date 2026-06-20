@@ -71,7 +71,7 @@ export default function Consultas() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Cita ID', dataIndex: 'citaId', key: 'citaId', render: (v: number) => <Tag style={{ borderRadius: 4 }}>#{v}</Tag> },
     { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Consulta) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; } },
     { title: 'Doctor', key: 'doctorId', render: (v: unknown, r: Consulta) => { const d = usuarios?.find(u => u.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
@@ -108,7 +108,7 @@ export default function Consultas() {
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Nueva Consulta</Text>}
         open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => form.submit()} okText="Registrar" width={640} destroyOnClose
         styles={{ body: { padding: '24px 28px' } }}>
-        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate(v)} preserve={false}>
+        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate({ ...v, fechaConsulta: v.fechaConsulta?.toISOString?.() ?? v.fechaConsulta })} preserve={false}>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="pacienteId" label="Paciente" rules={[{ required: true }]} style={{ width: '50%' }}>
               <PacienteSearchByDni pacientes={pacientes || []} onSelect={handlePatientSelect} value={selectedPacienteId} onChange={(v) => setSelectedPacienteId(v)} />
@@ -119,7 +119,7 @@ export default function Consultas() {
           </div>
           <Form.Item name="doctorId" hidden><Input /></Form.Item>
           <Form.Item name="fechaConsulta" label="Fecha de Consulta" rules={[{ required: true }]}>
-            <DatePicker showTime style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaConsulta', d.toISOString()); }} />
+            <DatePicker showTime style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="sintomas" label="Síntomas">
             <Input.TextArea rows={2} placeholder="Síntomas del paciente" />

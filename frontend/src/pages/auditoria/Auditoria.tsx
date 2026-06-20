@@ -31,7 +31,7 @@ export default function Auditoria() {
   });
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Usuario', dataIndex: 'username', key: 'username', render: (v: string) => <Tag color="#3B82F6" style={{ borderRadius: 4 }}>{v}</Tag> },
     { title: 'Acción', dataIndex: 'accion', key: 'accion', render: (v: string) => <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{v}</Text> },
     { title: 'Recurso', dataIndex: 'recurso', key: 'recurso', ellipsis: true, render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v || '-'}</Text> },

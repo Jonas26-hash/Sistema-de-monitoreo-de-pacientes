@@ -14,4 +14,9 @@ public interface NotificacionesClient {
     @Path("/notificaciones/enviar-correo")
     @Consumes(MediaType.APPLICATION_JSON)
     Response enviarCorreo(String body);
+
+    @POST
+    @Path("/notificaciones/enviar-correo-personalizado")
+    @Consumes(MediaType.APPLICATION_JSON)
+    Response enviarCorreoPersonalizado(String body);
 }

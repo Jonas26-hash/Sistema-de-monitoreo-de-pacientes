@@ -1,96 +1,82 @@
 package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
-import jakarta.transaction.Transactional;
+import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import upeu.edu.pe.Paciente;
+import upeu.edu.pe.entity.Paciente;
+import upeu.edu.pe.service.PacienteService;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Path("/pacientes")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class PacienteResource {
 
+    @Inject
+    PacienteService service;
+
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public List<Paciente> listar() {
-        return Paciente.list("activo", true);
+        return service.listar();
     }
 
     @GET
     @Path("/{id}")
-    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
     public Response buscar(@PathParam("id") Long id) {
-        Paciente paciente = Paciente.findById(id);
-        if (paciente == null) {
+        try {
+            return Response.ok(service.buscar(id)).build();
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Paciente no encontrado\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.ok(paciente).build();
     }
 
     @GET
     @Path("/dni/{dni}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public Response buscarPorDni(@PathParam("dni") String dni) {
-        Paciente paciente = Paciente.find("dni = ?1 and activo = ?2", dni, true).firstResult();
-        if (paciente == null) {
+        try {
+            return Response.ok(service.buscarPorDni(dni)).build();
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Paciente no encontrado\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.ok(paciente).build();
     }
 
     @POST
-    @Transactional
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public Response crear(@Valid Paciente paciente) {
-        paciente.activo = true;
-        paciente.persist();
-        return Response.status(Response.Status.CREATED).entity(paciente).build();
+        return Response.status(Response.Status.CREATED)
+            .entity(service.crear(paciente)).build();
     }
 
     @PUT
     @Path("/{id}")
-    @Transactional
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
-    public Response actualizar(@PathParam("id") Long id, @Valid Paciente pacienteActualizado) {
-        Paciente paciente = Paciente.findById(id);
-        if (paciente == null) {
+    public Response actualizar(@PathParam("id") Long id, @Valid Paciente paciente) {
+        try {
+            return Response.ok(service.actualizar(id, paciente)).build();
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("Paciente no encontrado").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        paciente.nombres = pacienteActualizado.nombres;
-        paciente.apellidoPaterno = pacienteActualizado.apellidoPaterno;
-        paciente.apellidoMaterno = pacienteActualizado.apellidoMaterno;
-        paciente.direccion = pacienteActualizado.direccion;
-        paciente.telefono = pacienteActualizado.telefono;
-        paciente.email = pacienteActualizado.email;
-        paciente.antecedentesFamiliares = pacienteActualizado.antecedentesFamiliares;
-        paciente.alergias = pacienteActualizado.alergias;
-        paciente.condiciones = pacienteActualizado.condiciones;
-        paciente.medicamentosActual = pacienteActualizado.medicamentosActual;
-        paciente.nombreSeguro = pacienteActualizado.nombreSeguro;
-        paciente.numeroPoliza = pacienteActualizado.numeroPoliza;
-        paciente.vigenciaSeguro = pacienteActualizado.vigenciaSeguro;
-        return Response.ok(paciente).build();
     }
 
     @DELETE
     @Path("/{id}")
-    @Transactional
     @RolesAllowed({"ADMIN"})
     public Response eliminar(@PathParam("id") Long id) {
-        Paciente paciente = Paciente.findById(id);
-        if (paciente != null) {
-            paciente.activo = false;
-            paciente.persist();
+        try {
+            service.eliminar(id);
             return Response.noContent().build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.status(Response.Status.NOT_FOUND).entity("Paciente no encontrado").build();
     }
 }

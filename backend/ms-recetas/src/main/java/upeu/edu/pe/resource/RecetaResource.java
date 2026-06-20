@@ -1,13 +1,13 @@
 package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
-import jakarta.transaction.Transactional;
+import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import upeu.edu.pe.entity.Receta;
-import java.time.LocalDate;
+import upeu.edu.pe.service.RecetaService;
 import java.util.List;
 
 @Path("/recetas")
@@ -15,115 +15,101 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecetaResource {
 
+    @Inject
+    RecetaService service;
+
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public List<Receta> listar() {
-        return Receta.listAll();
+        return service.listar();
     }
 
     @GET
     @Path("/pendientes")
     @RolesAllowed({"ADMIN", "FARMACEUTICO", "ATENCION_CLIENTE"})
     public List<Receta> pendientes() {
-        return Receta.list("dispensada = ?1", false);
+        return service.pendientes();
     }
 
     @GET
     @Path("/paciente/{pacienteId}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
     public List<Receta> findByPaciente(@PathParam("pacienteId") Long pacienteId) {
-        return Receta.list("pacienteId = ?1", pacienteId);
+        return service.findByPaciente(pacienteId);
     }
 
     @GET
     @Path("/{id}")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
     public Response buscar(@PathParam("id") Long id) {
-        Receta receta = Receta.findById(id);
-        if (receta == null) {
+        try {
+            return Response.ok(service.buscar(id)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Receta no encontrada\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.ok(receta).build();
     }
 
     @POST
-    @Transactional
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public Response crear(@Valid Receta receta) {
-        receta.persist();
-        return Response.status(Response.Status.CREATED).entity(receta).build();
+        return Response.status(Response.Status.CREATED)
+            .entity(service.crear(receta)).build();
     }
 
     @PUT
     @Path("/{id}")
-    @Transactional
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public Response actualizar(@PathParam("id") Long id, @Valid Receta receta) {
-        Receta entity = Receta.findById(id);
-        if (entity == null) {
+        try {
+            return Response.ok(service.actualizar(id, receta)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Receta no encontrada\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        entity.consultaId = receta.consultaId;
-        entity.pacienteId = receta.pacienteId;
-        entity.doctorId = receta.doctorId;
-        entity.fechaEmision = receta.fechaEmision;
-        entity.fechaVigencia = receta.fechaVigencia;
-        entity.medicamentos = receta.medicamentos;
-        entity.indicaciones = receta.indicaciones;
-        entity.dispensada = receta.dispensada;
-        entity.fechaDispensacion = receta.fechaDispensacion;
-        entity.pagado = receta.pagado;
-        return Response.ok(entity).build();
     }
 
     @PUT
     @Path("/{id}/dispensar")
-    @Transactional
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
     public Response dispensar(@PathParam("id") Long id) {
-        Receta entity = Receta.findById(id);
-        if (entity == null) {
+        try {
+            return Response.ok(service.dispensar(id)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Receta no encontrada\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        entity.dispensada = true;
-        entity.fechaDispensacion = LocalDate.now();
-        return Response.ok(entity).build();
     }
 
     @PUT
     @Path("/{id}/pagar")
-    @Transactional
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public Response pagar(@PathParam("id") Long id) {
-        Receta entity = Receta.findById(id);
-        if (entity == null) {
+        try {
+            return Response.ok(service.pagar(id)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Receta no encontrada\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        entity.pagado = true;
-        return Response.ok(entity).build();
     }
 
     @GET
     @Path("/pendientes-pago/paciente/{pacienteId}")
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public List<Receta> pendientesPagoByPaciente(@PathParam("pacienteId") Long pacienteId) {
-        return Receta.list("pacienteId = ?1 AND (pagado IS NULL OR pagado = false) AND dispensada = ?2", pacienteId, false);
+        return service.pendientesPagoByPaciente(pacienteId);
     }
 
     @DELETE
     @Path("/{id}")
-    @Transactional
     @RolesAllowed({"ADMIN"})
     public Response eliminar(@PathParam("id") Long id) {
-        boolean deleted = Receta.deleteById(id);
-        if (!deleted) {
+        try {
+            service.eliminar(id);
+            return Response.noContent().build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("{\"error\":\"Receta no encontrada\"}").build();
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
-        return Response.noContent().build();
     }
 }

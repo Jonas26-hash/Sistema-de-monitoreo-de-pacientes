@@ -13,7 +13,7 @@ export default function Medicamentos() {
   });
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Código', dataIndex: 'codigo', key: 'codigo', render: (v: string) => <Tag style={{ borderRadius: 4 }}>{v}</Tag> },
     { title: 'Nombre', dataIndex: 'nombre', key: 'nombre', render: (v: string) => <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{v}</Text> },
     { title: 'Presentación', dataIndex: 'presentacion', key: 'presentacion', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },

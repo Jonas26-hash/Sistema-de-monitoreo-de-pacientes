@@ -11,4 +11,5 @@ public class CorreoRequest {
     public String username;
     public String nombres;
     public String apellidos;
+    public boolean esStaff;
 }

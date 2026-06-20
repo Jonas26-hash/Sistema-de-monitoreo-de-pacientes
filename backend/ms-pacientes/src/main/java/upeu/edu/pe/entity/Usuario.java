@@ -3,7 +3,7 @@ package upeu.edu.pe.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
 import java.util.List;
-import upeu.edu.pe.Paciente;
+import upeu.edu.pe.entity.Paciente;
 
 @Entity
 @Table(name = "usuarios", uniqueConstraints = {

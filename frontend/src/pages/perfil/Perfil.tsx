@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card, Form, Input, Button, Avatar, Typography, message, Space, Divider, Modal } from 'antd';
-import { UserOutlined, MailOutlined, PhoneOutlined, IdcardOutlined, CameraOutlined, LockOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, Avatar, Typography, message, Space, Divider, Modal, DatePicker, Select } from 'antd';
+import { UserOutlined, MailOutlined, IdcardOutlined, CameraOutlined, LockOutlined, EnvironmentOutlined, CalendarOutlined, MedicineBoxOutlined } from '@ant-design/icons';
+import PhoneInput from '../../components/common/PhoneInput';
 import { showCrudSuccess } from '../../utils/notifications';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import type { Paciente } from '../../types';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -15,26 +18,32 @@ export default function Perfil() {
   const [saving, setSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [fullPaciente, setFullPaciente] = useState<Paciente | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('profile_avatar') || '');
 
   useEffect(() => {
     if (user) {
       setLoading(true);
-      api.get(`/auth/usuarios`, { params: { size: 100 } })
+      api.get('/auth/profile')
         .then((res) => {
-          const users = Array.isArray(res.data) ? res.data : res.data?.content || [];
-          const me = users.find((u: { username: string }) => u.username === user.username);
-          if (me) {
-            form.setFieldsValue({
-              nombres: me.nombres || '',
-              apellidos: me.apellidos || '',
-              email: me.email || '',
-              dni: me.dni || '',
-              telefono: me.telefono || '',
-              especialidad: me.especialidad || '',
-              username: me.username,
-            });
+          const me = res.data;
+          form.setFieldsValue({
+            nombres: me.nombres || '',
+            apellidos: me.apellidos || '',
+            email: me.email || '',
+            dni: me.dni || '',
+            telefono: me.telefono || '',
+            especialidad: me.especialidad || '',
+            username: me.username,
+            fechaNacimiento: me.fechaNacimiento ? dayjs(me.fechaNacimiento) : null,
+            genero: me.genero || undefined,
+            direccion: me.direccion || '',
+          });
+          if (me.pacienteId) {
+            api.get(`/pacientes/${me.pacienteId}`)
+              .then((res) => setFullPaciente(res.data))
+              .catch(() => {});
           }
         })
         .catch(() => message.error('Error al cargar datos'))
@@ -57,6 +66,9 @@ export default function Perfil() {
   const handleSave = async (values: Record<string, string>) => {
     setSaving(true);
     try {
+      const fechaNacimiento = values.fechaNacimiento
+        ? dayjs(values.fechaNacimiento).format('YYYY-MM-DD')
+        : null;
       await api.put('/auth/profile', {
         nombres: values.nombres,
         apellidos: values.apellidos,
@@ -64,6 +76,9 @@ export default function Perfil() {
         dni: values.dni || null,
         telefono: values.telefono || null,
         especialidad: values.especialidad || null,
+        fechaNacimiento,
+        genero: values.genero || null,
+        direccion: values.direccion || null,
       });
       updateUser({ email: values.email });
       const fullName = `${values.nombres} ${values.apellidos}`;
@@ -143,11 +158,26 @@ export default function Perfil() {
               <Input prefix={<IdcardOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="12345678" maxLength={8} style={{ borderRadius: 10 }} />
             </Form.Item>
             <Form.Item name="telefono" label="Teléfono" style={{ width: '50%' }}>
-              <Input prefix={<PhoneOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="+51 999 999 999" style={{ borderRadius: 10 }} />
+              <PhoneInput />
             </Form.Item>
           </div>
           <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
-            <Input prefix={<MailOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="email@hospital.com" style={{ borderRadius: 10 }} />
+            <Input prefix={<MailOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="email@clinica.com" style={{ borderRadius: 10 }} />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="fechaNacimiento" label="Fecha de Nacimiento" style={{ width: '50%' }}>
+              <DatePicker style={{ width: '100%', borderRadius: 10 }} placeholder="Seleccione fecha" />
+            </Form.Item>
+            <Form.Item name="genero" label="Género" style={{ width: '50%' }}>
+              <Select placeholder="Seleccione género" allowClear style={{ borderRadius: 10 }}>
+                <Select.Option value="MASCULINO">Masculino</Select.Option>
+                <Select.Option value="FEMENINO">Femenino</Select.Option>
+                <Select.Option value="OTRO">Otro</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+          <Form.Item name="direccion" label="Dirección">
+            <Input.TextArea rows={2} placeholder="Dirección" style={{ borderRadius: 10 }} />
           </Form.Item>
           <Form.Item name="especialidad" label="Especialidad">
             <Input placeholder="Ej: Cardiología" style={{ borderRadius: 10 }} />
@@ -165,6 +195,30 @@ export default function Perfil() {
           </div>
         </Form>
       </Card>
+
+      {fullPaciente && (
+        <Card className="glass" style={{ borderRadius: 16, marginTop: 24 }}>
+          <Title level={5} style={{ color: 'var(--text-primary)', marginBottom: 16 }}>🩺 Información Médica</Title>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 16 }}>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Alergias</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.alergias || 'Ninguna registrada'}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Condiciones Preexistentes</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.condiciones || 'Ninguna registrada'}</Text></div>
+            <div style={{ gridColumn: '1 / -1' }}><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Antecedentes Familiares</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.antecedentesFamiliares || 'Ninguno registrado'}</Text></div>
+            <div style={{ gridColumn: '1 / -1' }}><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Medicamentos Actuales</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.medicamentosActual || 'Ninguno registrado'}</Text></div>
+          </div>
+
+          <Divider style={{ margin: '16px 0' }} />
+          <Title level={5} style={{ color: 'var(--text-primary)', marginBottom: 16 }}>🔒 Información del Seguro</Title>
+          {fullPaciente.nombreSeguro ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+              <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nombre del Seguro</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.nombreSeguro}</Text></div>
+              <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>N° Póliza</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.numeroPoliza || '-'}</Text></div>
+              <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Vigencia</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{fullPaciente.vigenciaSeguro ? dayjs(fullPaciente.vigenciaSeguro).format('DD/MM/YYYY') : '-'}</Text></div>
+            </div>
+          ) : (
+            <Text style={{ color: 'var(--text-muted)' }}>Sin seguro registrado</Text>
+          )}
+        </Card>
+      )}
 
       <Modal
         title="Cambiar Contraseña"

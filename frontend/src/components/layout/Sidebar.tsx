@@ -44,7 +44,6 @@ const menuItems = [
   { key: '/tarifario', icon: <TagsOutlined />, label: 'Tarifario', roles: ['ADMIN', 'ATENCION_CLIENTE'] },
   { key: '/campanias', icon: <GiftOutlined />, label: 'Campañas', roles: ['ADMIN', 'ATENCION_CLIENTE'] },
   { key: '/configuracion', icon: <SettingOutlined />, label: 'Configuración', roles: ['ADMIN'] },
-  { key: '/verificacion', icon: <SafetyOutlined />, label: 'Verificación', roles: ['PACIENTE'] },
 ];
 
 export default function Sidebar({ collapsed, onCollapse }: { collapsed: boolean; onCollapse: (v: boolean) => void }) {

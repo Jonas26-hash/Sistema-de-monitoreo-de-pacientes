@@ -2,6 +2,11 @@
 target/
 **/target/
 
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
 # IDE metadata
 .idea/
 .vscode/

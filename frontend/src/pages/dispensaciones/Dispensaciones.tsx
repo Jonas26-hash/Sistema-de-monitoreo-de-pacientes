@@ -109,7 +109,7 @@ export default function Dispensaciones() {
   });
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Receta ID', dataIndex: 'recetaId', key: 'recetaId', render: (v: number) => <Tag style={{ borderRadius: 4 }}>#{v}</Tag> },
     { title: 'Medicamento', key: 'medicamentoId', render: (v: unknown, r: Dispensacion) => { const m = medicamentoMap.get(r.medicamentoId); return m ? <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{m.nombre}</Text> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.medicamentoId}</Text>; } },
     { title: 'Cantidad', dataIndex: 'cantidad', key: 'cantidad', render: (v: number) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
@@ -153,7 +153,7 @@ export default function Dispensaciones() {
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Nueva Dispensación</Text>}
         open={modalOpen} onCancel={() => { setModalOpen(false); setSelectedRecetaId(null); setSelectedPacienteId(null); }} onOk={() => form.submit()} okText="Dispensar" width={640} destroyOnClose
         styles={{ body: { padding: '24px 28px' } }}>
-        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate(v)} preserve={false}
+        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate({ ...v, fechaDispensacion: v.fechaDispensacion?.toISOString?.() ?? v.fechaDispensacion })} preserve={false}
           style={{ width: '100%' }}>
           <Form.Item label="Paciente" required>
             <PacienteSearchByDni pacientes={pacientes || []} onSelect={handlePatientSelect} value={selectedPacienteId} onChange={(v) => setSelectedPacienteId(v)} />
@@ -200,7 +200,7 @@ export default function Dispensaciones() {
             </Form.Item>
           </div>
           <Form.Item name="fechaDispensacion" label="Fecha de Dispensación" rules={[{ required: true }]}>
-            <DatePicker showTime style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaDispensacion', d.toISOString()); }} />
+            <DatePicker showTime style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="farmaceuticoId" hidden><Input /></Form.Item>
           <Form.Item name="observaciones" label="Observaciones">

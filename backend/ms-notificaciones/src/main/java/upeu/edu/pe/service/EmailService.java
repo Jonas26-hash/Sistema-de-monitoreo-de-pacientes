@@ -4,6 +4,9 @@ import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import upeu.edu.pe.entity.EmailLog;
+import java.time.LocalDateTime;
 
 @ApplicationScoped
 public class EmailService {
@@ -12,10 +15,20 @@ public class EmailService {
     Mailer mailer;
 
     public void enviarCodigoVerificacion(String to, String codigo, String username, String nombres, String apellidos) {
+        enviarCodigoVerificacion(to, codigo, username, nombres, apellidos, false);
+    }
+
+    public void enviarCodigoVerificacion(String to, String codigo, String username, String nombres, String apellidos, boolean esStaff) {
         String nombreCompleto = (nombres != null && apellidos != null) ? nombres + " " + apellidos : "";
         String usuarioLinea = (username != null)
             ? "<p>Tu nombre de usuario sugerido es: <strong>" + username + "</strong></p>"
             + "<p>Puedes cambiarlo si lo deseas al ingresar al link.</p>"
+            : "";
+
+        String staffLinea = esStaff
+            ? "<div style='background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin:16px 0'>"
+            + "<p style='color:#991b1b;font-weight:600;margin:0'>Tu cuenta será activada por un administrador. Recibirás un correo cuando esté lista.</p>"
+            + "</div>"
             : "";
 
         String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
@@ -33,22 +46,29 @@ public class EmailService {
             + "<div class='code'>" + codigo + "</div>"
             + "<p>Este código expira en 10 minutos.</p>"
             + usuarioLinea
-            + "<p>Ingresa a: <a class='link' href='http://localhost:3000/verificacion?email=" + to
-            + (username != null ? "&amp;username=" + username : "") + "'>http://localhost:3000/verificacion</a></p>"
-            + "<p>y completa tu registro eligiendo tu usuario y contraseña.</p>"
+            + staffLinea
             + "<p class='footer'>Si no solicitaste este registro, ignora este mensaje.</p>"
             + "</div></body></html>";
 
-        mailer.send(
-            Mail.withHtml(to,
-                "Código de verificación - Sistema de Monitoreo de Pacientes",
-                html)
-        );
+        String asunto = "Código de verificación - Sistema de Monitoreo de Pacientes";
+        mailer.send(Mail.withHtml(to, asunto, html));
+        registrarEnvio(to, asunto, html, "VERIFICACION");
     }
 
     public void enviarNotificacion(String to, String asunto, String mensaje) {
-        mailer.send(
-            Mail.withText(to, asunto, mensaje)
-        );
+        mailer.send(Mail.withText(to, asunto, mensaje));
+        registrarEnvio(to, asunto, mensaje, "NOTIFICACION");
+    }
+
+    @Transactional
+    void registrarEnvio(String to, String asunto, String mensaje, String tipo) {
+        EmailLog log = new EmailLog();
+        log.destinatario = to;
+        log.asunto = asunto;
+        log.mensaje = mensaje.length() > 1000 ? mensaje.substring(0, 1000) : mensaje;
+        log.fechaEnvio = LocalDateTime.now();
+        log.tipo = tipo;
+        log.exitoso = true;
+        log.persist();
     }
 }

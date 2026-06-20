@@ -25,6 +25,10 @@ public class PreRegistroRequest {
 
     public String direccion;
 
-    @NotNull
     public Rol rolSolicitado;
+
+    @jakarta.validation.constraints.Pattern(regexp = "^[a-zA-Z0-9_]{3,50}$", message = "Username: solo letras, números y guión bajo (3-50 caracteres)")
+    public String username;
+
+    public String password;
 }

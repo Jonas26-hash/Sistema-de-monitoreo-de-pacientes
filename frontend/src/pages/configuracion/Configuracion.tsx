@@ -58,7 +58,7 @@ export default function Configuracion() {
       if (values.hospitalName) {
         document.title = `${values.hospitalName} — MedTrack`;
       } else {
-        document.title = 'MedTrack — Sistema de Monitoreo Hospitalario';
+        document.title = 'MedTrack — Sistema de Monitoreo Clínico';
       }
       showCrudSuccess('actualizado', 'Configuración');
     } catch {
@@ -81,7 +81,7 @@ export default function Configuracion() {
           </div>
           <div>
             <Title level={4} style={{ margin: 0, fontWeight: 700 }}>Configuración del Sistema</Title>
-            <Text style={{ color: 'var(--text-muted)' }}>Personaliza el sistema con los datos de tu hospital</Text>
+            <Text style={{ color: 'var(--text-muted)' }}>Personaliza el sistema con los datos de tu clínica</Text>
           </div>
         </Space>
       </div>
@@ -109,7 +109,7 @@ export default function Configuracion() {
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoChange} />
           </div>
 
-          <Form.Item name="hospitalName" label="Nombre del Hospital" rules={[{ required: true, message: 'Ingresa el nombre de tu hospital' }]}>
+          <Form.Item name="hospitalName" label="Nombre de la Clínica" rules={[{ required: true, message: 'Ingresa el nombre de tu clínica' }]}>
             <Input prefix={<MedicineBoxOutlined style={{ color: 'var(--text-muted)' }} />}
               placeholder="Ej: Clínica San Pablo" style={{ borderRadius: 10, height: 48 }} />
           </Form.Item>
@@ -126,7 +126,7 @@ export default function Configuracion() {
                     <img src={logoPreview} alt="" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 6 }} />
                   )}
                   <Text style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 16 }}>
-                    {config.hospitalName || 'Mi Hospital'}
+                    {config.hospitalName || 'Mi Clínica'}
                   </Text>
                 </div>
                 <Text style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginTop: 4 }}>

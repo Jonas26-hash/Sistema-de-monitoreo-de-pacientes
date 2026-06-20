@@ -2,7 +2,6 @@ package upeu.edu.pe.resource;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -13,7 +12,7 @@ import upeu.edu.pe.dto.CorreoPersonalizadoRequest;
 import upeu.edu.pe.dto.CorreoRequest;
 import upeu.edu.pe.entity.Notificacion;
 import upeu.edu.pe.service.EmailService;
-import java.time.LocalDateTime;
+import upeu.edu.pe.service.NotificacionService;
 import java.util.List;
 
 @Path("/notificaciones")
@@ -24,28 +23,29 @@ public class NotificacionResource {
     private static final Logger log = LoggerFactory.getLogger(NotificacionResource.class);
 
     @Inject
+    NotificacionService notificacionService;
+
+    @Inject
     EmailService emailService;
 
     @GET
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public List<Notificacion> listar() {
-        return Notificacion.listAll();
+        return notificacionService.listar();
     }
 
     @GET
     @Path("/paciente/{pacienteId}")
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "PACIENTE"})
     public List<Notificacion> findByPaciente(@PathParam("pacienteId") Long pacienteId) {
-        return Notificacion.list("pacienteId = ?1", pacienteId);
+        return notificacionService.findByPaciente(pacienteId);
     }
 
     @POST
-    @Transactional
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public Response crear(@Valid Notificacion notificacion) {
-        notificacion.fechaEnvio = LocalDateTime.now();
-        notificacion.persist();
-        return Response.status(Response.Status.CREATED).entity(notificacion).build();
+        return Response.status(Response.Status.CREATED)
+            .entity(notificacionService.crear(notificacion)).build();
     }
 
     @POST
@@ -53,7 +53,7 @@ public class NotificacionResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response enviarCorreo(@Valid CorreoRequest request) {
         try {
-            emailService.enviarCodigoVerificacion(request.to, request.codigo, request.username, request.nombres, request.apellidos);
+            emailService.enviarCodigoVerificacion(request.to, request.codigo, request.username, request.nombres, request.apellidos, request.esStaff);
             return Response.ok("{\"mensaje\":\"Correo enviado exitosamente\"}").build();
         } catch (Exception e) {
             log.error("Error enviando correo de verificacion", e);

@@ -13,4 +13,7 @@ public class UsuarioResponse {
     public String telefono;
     public Boolean activo;
     public Long pacienteId;
+    public String fechaNacimiento;
+    public String genero;
+    public String direccion;
 }

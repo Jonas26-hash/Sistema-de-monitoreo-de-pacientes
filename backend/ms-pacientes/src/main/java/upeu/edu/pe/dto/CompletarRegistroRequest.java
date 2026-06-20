@@ -9,11 +9,13 @@ public class CompletarRegistroRequest {
     @NotBlank @Email
     public String email;
 
-    @NotBlank @Size(min = 6)
+    @Size(min = 6)
     public String password;
 
-    @NotBlank @Size(min = 6)
+    @Size(min = 6)
     public String confirmarPassword;
 
     public String username;
+
+    public String codigo;
 }

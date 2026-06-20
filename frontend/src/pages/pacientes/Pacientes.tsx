@@ -1,5 +1,7 @@
-import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Input as SearchInput, Typography } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
+import { useState } from 'react';
+import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Input as SearchInput, Typography, Divider } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, TeamOutlined, EyeOutlined } from '@ant-design/icons';
+import PhoneInput from '../../components/common/PhoneInput';
 import { useCrud } from '../../hooks/useCrud';
 import type { Paciente } from '../../types';
 import dayjs from 'dayjs';
@@ -8,6 +10,14 @@ const { Title, Text } = Typography;
 
 export default function Pacientes() {
   const [form] = Form.useForm();
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailPaciente, setDetailPaciente] = useState<Paciente | null>(null);
+
+  const handleOpenDetail = (p: Paciente) => {
+    setDetailPaciente(p);
+    setDetailOpen(true);
+  };
+
   const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete } = useCrud<Paciente>({
     key: 'pacientes',
     endpoint: '/pacientes',
@@ -15,15 +25,16 @@ export default function Pacientes() {
   });
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60, render: (v: number) => <Text style={{ color: 'var(--text-muted)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
     { title: 'Paciente', key: 'nombre', render: (_: unknown, r: Paciente) => <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{r.nombres} {r.apellidoPaterno}{r.apellidoMaterno ? ' ' + r.apellidoMaterno : ''}</Text> },
     { title: 'DNI', dataIndex: 'dni', key: 'dni', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     { title: 'Email', dataIndex: 'email', key: 'email', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     { title: 'Teléfono', dataIndex: 'telefono', key: 'telefono', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     {
-      title: 'Acciones', key: 'acciones', width: 100,
+      title: 'Acciones', key: 'acciones', width: 140,
       render: (_: unknown, r: Paciente) => (
         <Space>
+          <Button type="text" icon={<EyeOutlined />} style={{ color: '#00D4AA' }} onClick={() => handleOpenDetail(r)} />
           <Button type="text" icon={<EditOutlined />} style={{ color: '#3B82F6' }} onClick={() => openEdit(r)} />
           <Button type="text" icon={<DeleteOutlined />} style={{ color: '#EF4444' }} onClick={() => handleDelete(r.id!)} />
         </Space>
@@ -41,7 +52,7 @@ export default function Pacientes() {
             </div>
             <div>
               <Title level={4} style={{ margin: 0 }}>Pacientes</Title>
-              <Text style={{ color: 'var(--text-muted)' }}>Gestión de pacientes del hospital</Text>
+              <Text style={{ color: 'var(--text-muted)' }}>Gestión de pacientes de la clínica</Text>
             </div>
           </Space>
         </div>
@@ -55,6 +66,44 @@ export default function Pacientes() {
         <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading}
           pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
       </div>
+
+      <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Detalle del Paciente</Text>}
+        open={detailOpen} onCancel={() => setDetailOpen(false)} footer={[<Button onClick={() => setDetailOpen(false)}>Cerrar</Button>]}
+        width={680} destroyOnClose styles={{ body: { padding: '24px 28px' } }}>
+        {detailPaciente && <>
+          <Title level={5} style={{ color: 'var(--text-primary)', marginBottom: 16 }}>📋 Datos Personales</Title>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 24 }}>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nombre Completo</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.nombres} {detailPaciente.apellidoPaterno}{detailPaciente.apellidoMaterno ? ' ' + detailPaciente.apellidoMaterno : ''}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>DNI</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.dni}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Email</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.email || '-'}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Teléfono</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.telefono || '-'}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Fecha de Nacimiento</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.fechaNacimiento ? dayjs(detailPaciente.fechaNacimiento).format('DD/MM/YYYY') : '-'}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Género</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.genero ? (detailPaciente.genero === 'MASCULINO' ? 'Masculino' : detailPaciente.genero === 'FEMENINO' ? 'Femenino' : detailPaciente.genero) : '-'}</Text></div>
+            <div style={{ gridColumn: '1 / -1' }}><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Dirección</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.direccion || '-'}</Text></div>
+          </div>
+
+          <Divider style={{ margin: '16px 0' }} />
+          <Title level={5} style={{ color: 'var(--text-primary)', marginBottom: 16 }}>🩺 Información Médica</Title>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 24 }}>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Alergias</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.alergias || 'Ninguna registrada'}</Text></div>
+            <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Condiciones Preexistentes</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.condiciones || 'Ninguna registrada'}</Text></div>
+            <div style={{ gridColumn: '1 / -1' }}><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Antecedentes Familiares</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.antecedentesFamiliares || 'Ninguno registrado'}</Text></div>
+            <div style={{ gridColumn: '1 / -1' }}><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Medicamentos Actuales</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.medicamentosActual || 'Ninguno registrado'}</Text></div>
+          </div>
+
+          <Divider style={{ margin: '16px 0' }} />
+          <Title level={5} style={{ color: 'var(--text-primary)', marginBottom: 16 }}>🔒 Información del Seguro</Title>
+          {detailPaciente.nombreSeguro ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+              <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nombre del Seguro</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.nombreSeguro}</Text></div>
+              <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>N° Póliza</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.numeroPoliza || '-'}</Text></div>
+              <div><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>Vigencia</Text><br /><Text style={{ color: 'var(--text-primary)' }}>{detailPaciente.vigenciaSeguro ? dayjs(detailPaciente.vigenciaSeguro).format('DD/MM/YYYY') : '-'}</Text></div>
+            </div>
+          ) : (
+            <Text style={{ color: 'var(--text-muted)' }}>Sin seguro registrado</Text>
+          )}
+        </>}
+      </Modal>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Paciente' : 'Nuevo Paciente'}</Text>}
         open={modalOpen} onCancel={closeModal} onOk={() => form.submit()} okText={editing ? 'Actualizar' : 'Crear'} width={640} destroyOnClose
@@ -79,7 +128,7 @@ export default function Pacientes() {
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="fechaNacimiento" label="Fecha de Nacimiento" style={{ width: '50%' }}>
-              <DatePicker style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('fechaNacimiento', d.toISOString()); }} />
+              <DatePicker style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="genero" label="Género" style={{ width: '50%' }}>
               <Select placeholder="Seleccionar">
@@ -94,7 +143,7 @@ export default function Pacientes() {
               <Input placeholder="email@ejemplo.com" />
             </Form.Item>
             <Form.Item name="telefono" label="Teléfono" style={{ width: '50%' }}>
-              <Input placeholder="+51 999 999 999" />
+              <PhoneInput />
             </Form.Item>
           </div>
           <Form.Item name="direccion" label="Dirección">
@@ -131,7 +180,7 @@ export default function Pacientes() {
                 </Form.Item>
               </div>
               <Form.Item name="vigenciaSeguro" label="Vigencia del Seguro">
-                <DatePicker style={{ width: '100%' }} onChange={(d) => { if (d) form.setFieldValue('vigenciaSeguro', d.toISOString()); }} />
+                <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </div>
           </details>

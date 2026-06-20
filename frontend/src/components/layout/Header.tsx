@@ -32,15 +32,15 @@ export default function Header({ collapsed, onToggle }: { collapsed: boolean; on
     }, 2000);
   };
 
-  const displayName = localStorage.getItem('user_display_name') || user?.username || '';
-  const initials = displayName.charAt(0).toUpperCase();
+  const displayName = localStorage.getItem('user_display_name') || (user?.nombres && user?.apellidos ? `${user.nombres} ${user.apellidos}`.trim() : '') || user?.username || '';
+  const initials = (user?.nombres?.charAt(0) || user?.username?.charAt(0) || '?').toUpperCase();
 
   return (
     <AntHeader className="app-header" style={{ height: LAYOUT.headerHeight }}>
       <SuccessModal
         open={goodbyeOpen}
         title="¡Hasta pronto!"
-        subtitle={`${user?.username || 'Usuario'}, has cerrado sesión correctamente`}
+        subtitle={`${displayName || 'Usuario'}, has cerrado sesión correctamente`}
         lottieSrc="/lottie/Despedida.svg"
       />
       <Space>
@@ -67,7 +67,7 @@ export default function Header({ collapsed, onToggle }: { collapsed: boolean; on
           <Dropdown
             menu={{
               items: [
-                { key: 'profile', icon: <UserOutlined />, label: user.username, disabled: true },
+                { key: 'profile', icon: <UserOutlined />, label: displayName, disabled: true },
                 { key: 'mi-perfil', icon: <UserOutlined />, label: 'Mi Perfil', onClick: () => navigate('/perfil') },
                 { type: 'divider' },
                 { key: 'logout', icon: <LogoutOutlined />, label: 'Cerrar Sesión', danger: true, onClick: handleLogout },

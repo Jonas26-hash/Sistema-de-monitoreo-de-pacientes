@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - hospital-network
+      - clinica-network
 
   db-atencion:
     image: postgres:16-alpine
@@ -35,7 +35,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - hospital-network
+      - clinica-network
 
   db-recetas:
     image: postgres:16-alpine
@@ -52,7 +52,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - hospital-network
+      - clinica-network
 
   db-farmacia:
     image: postgres:16-alpine
@@ -69,7 +69,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - hospital-network
+      - clinica-network
 
   db-cobros:
     image: postgres:16-alpine
@@ -86,7 +86,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - hospital-network
+      - clinica-network
 
   db-notificaciones:
     image: postgres:16-alpine
@@ -103,7 +103,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - hospital-network
+      - clinica-network
 
   # ==================== INFRAESTRUCTURA ====================
   config-server:
@@ -114,7 +114,7 @@ services:
     ports:
       - "8888:8888"
     networks:
-      - hospital-network
+      - clinica-network
 
   registry-server:
     build:
@@ -124,7 +124,7 @@ services:
     ports:
       - "8761:8761"
     networks:
-      - hospital-network
+      - clinica-network
 
   # ==================== MICROSERVICIOS ====================
   ms-pacientes:
@@ -151,7 +151,7 @@ services:
       db-pacientes:
         condition: service_healthy
     networks:
-      - hospital-network
+      - clinica-network
 
   ms-atencion:
     build:
@@ -175,7 +175,7 @@ services:
       db-atencion:
         condition: service_healthy
     networks:
-      - hospital-network
+      - clinica-network
 
   ms-recetas:
     build:
@@ -198,7 +198,7 @@ services:
       db-recetas:
         condition: service_healthy
     networks:
-      - hospital-network
+      - clinica-network
 
   ms-farmacia:
     build:
@@ -221,7 +221,7 @@ services:
       db-farmacia:
         condition: service_healthy
     networks:
-      - hospital-network
+      - clinica-network
 
   ms-cobros:
     build:
@@ -246,7 +246,7 @@ services:
       db-cobros:
         condition: service_healthy
     networks:
-      - hospital-network
+      - clinica-network
 
   ms-notificaciones:
     build:
@@ -254,6 +254,8 @@ services:
       dockerfile: Dockerfile
     container_name: ms-notificaciones
     restart: on-failure
+    env_file:
+      - .env
     environment:
       QUARKUS_HTTP_HOST: 0.0.0.0
       QUARKUS_HTTP_PORT: 8080
@@ -263,8 +265,8 @@ services:
       EUREKA_URL: http://registry-server:8761/eureka
       EUREKA_APP_NAME: ms-notificaciones
       JWT_PUBLIC_KEY_PATH: file:/deployments/jwt/publicKey.pem
-      SMTP_USERNAME: ing265530@gmail.com
-      SMTP_PASSWORD: wwtc acep khuj mmvk
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -274,7 +276,7 @@ services:
       db-notificaciones:
         condition: service_healthy
     networks:
-      - hospital-network
+      - clinica-network
 
   # ==================== API GATEWAY ====================
   api-gateway:
@@ -296,7 +298,7 @@ services:
       - ms-pacientes
       - ms-atencion
     networks:
-      - hospital-network
+      - clinica-network
 
   # ==================== FRONTEND ====================
   frontend:
@@ -311,8 +313,8 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - hospital-network
+      - clinica-network
 
 networks:
-  hospital-network:
+  clinica-network:
     driver: bridge

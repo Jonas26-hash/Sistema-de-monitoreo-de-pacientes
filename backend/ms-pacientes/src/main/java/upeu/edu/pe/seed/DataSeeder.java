@@ -35,7 +35,7 @@ public class DataSeeder {
         Usuario admin = new Usuario();
         admin.username = "admin";
         admin.password = BCrypt.hashpw("admin123", BCrypt.gensalt());
-        admin.email = "admin@hospital.com";
+        admin.email = "admin@clinica.com";
         admin.roles = java.util.List.of(Rol.ADMIN);
         admin.activo = true;
         admin.nombres = "Admin";
@@ -43,10 +43,10 @@ public class DataSeeder {
         admin.persist();
 
         String[][] seedUsers = {
-            {"medico", "medico123", "medico@hospital.com", "Dr. Juan", "Perez"},
-            {"farmaceutico", "farma123", "farma@hospital.com", "Carlos", "Lopez"},
-            {"enfermero", "enfermero123", "enfermero@hospital.com", "Rosa", " Martinez"},
-            {"atencion", "atencion123", "atencion@hospital.com", "Ana", "Torres"},
+            {"medico", "medico123", "medico@clinica.com", "Dr. Juan", "Perez"},
+            {"farmaceutico", "farma123", "farma@clinica.com", "Carlos", "Lopez"},
+            {"enfermero", "enfermero123", "enfermero@clinica.com", "Rosa", " Martinez"},
+            {"atencion", "atencion123", "atencion@clinica.com", "Ana", "Torres"},
             {"paciente1", "paciente123", "paciente1@correo.com", "Pedro", "Ramirez"}
         };
         Rol[] roles = {Rol.DOCTOR, Rol.FARMACEUTICO, Rol.ENFERMERO, Rol.ATENCION_CLIENTE, Rol.PACIENTE};
