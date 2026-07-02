@@ -10,8 +10,12 @@ import java.util.List;
 @ApplicationScoped
 public class DispensacionService {
 
-    public List<Dispensacion> listar() {
-        return Dispensacion.listAll();
+    public List<Dispensacion> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Dispensacion.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Dispensacion.list("LOWER(observaciones) LIKE ?1", pattern);
     }
 
     public List<Dispensacion> findByReceta(Long recetaId) {

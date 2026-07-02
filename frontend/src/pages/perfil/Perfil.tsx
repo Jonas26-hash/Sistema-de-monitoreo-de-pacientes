@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, Form, Input, Button, Avatar, Typography, message, Space, Divider, Modal, DatePicker, Select } from 'antd';
-import { UserOutlined, MailOutlined, IdcardOutlined, CameraOutlined, LockOutlined, EnvironmentOutlined, CalendarOutlined, MedicineBoxOutlined } from '@ant-design/icons';
+import { UserOutlined, MailOutlined, IdcardOutlined, CameraOutlined, DeleteOutlined, LockOutlined, EnvironmentOutlined, CalendarOutlined, MedicineBoxOutlined } from '@ant-design/icons';
 import PhoneInput from '../../components/common/PhoneInput';
 import { showCrudSuccess } from '../../utils/notifications';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +20,8 @@ export default function Perfil() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [fullPaciente, setFullPaciente] = useState<Paciente | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('profile_avatar') || '');
+  const [avatar, setAvatar] = useState<string>(user?.avatar || '');
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -40,6 +41,10 @@ export default function Perfil() {
             genero: me.genero || undefined,
             direccion: me.direccion || '',
           });
+          if (me.avatar) {
+            setAvatar(me.avatar);
+            updateUser({ avatar: me.avatar });
+          }
           if (me.pacienteId) {
             api.get(`/pacientes/${me.pacienteId}`)
               .then((res) => setFullPaciente(res.data))
@@ -58,9 +63,24 @@ export default function Perfil() {
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
       setAvatar(dataUrl);
-      localStorage.setItem('profile_avatar', dataUrl);
+      api.put('/auth/profile', { avatar: dataUrl })
+        .then(() => {
+          updateUser({ avatar: dataUrl });
+          setAvatarModalOpen(false);
+        })
+        .catch(() => message.error('Error al guardar avatar'));
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleAvatarDelete = () => {
+    setAvatar('');
+    api.put('/auth/profile', { avatar: '' })
+      .then(() => {
+        updateUser({ avatar: '' });
+        setAvatarModalOpen(false);
+      })
+      .catch(() => message.error('Error al eliminar avatar'));
   };
 
   const handleSave = async (values: Record<string, string>) => {
@@ -123,12 +143,12 @@ export default function Perfil() {
 
       <Card className="glass" style={{ borderRadius: 16 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
             <Avatar size={100} src={avatar || undefined}
               style={{ background: avatar ? 'transparent' : 'linear-gradient(135deg, #00D4AA, #059669)', fontSize: 40, fontWeight: 700, boxShadow: '0 10px 22px rgba(14,165,164,0.24)' }}>
               {!avatar ? (user?.username?.charAt(0).toUpperCase() || '?') : null}
             </Avatar>
-            <div onClick={() => fileInputRef.current?.click()} style={{
+            <div onClick={() => setAvatarModalOpen(true)} style={{
               position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: '50%',
               background: 'var(--brand-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', border: '3px solid var(--bg-body)', color: '#fff', fontSize: 14,
@@ -219,6 +239,30 @@ export default function Perfil() {
           )}
         </Card>
       )}
+
+      <Modal title="Foto de Perfil" open={avatarModalOpen} onCancel={() => setAvatarModalOpen(false)}
+        footer={null} centered width={400} destroyOnClose styles={{ body: { padding: '28px', textAlign: 'center' } }}>
+        <div style={{ marginBottom: 24 }}>
+          <Avatar size={140} src={avatar || undefined}
+            style={{ background: avatar ? 'transparent' : 'linear-gradient(135deg, #00D4AA, #059669)', fontSize: 52, fontWeight: 700, boxShadow: '0 10px 22px rgba(14,165,164,0.24)' }}>
+            {!avatar ? (user?.username?.charAt(0).toUpperCase() || '?') : null}
+          </Avatar>
+        </div>
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          <Button type="primary" icon={<CameraOutlined />} block size="large"
+            style={{ borderRadius: 10, height: 48, fontWeight: 600, background: 'linear-gradient(135deg, #00D4AA, #059669)', border: 'none' }}
+            onClick={() => fileInputRef.current?.click()}>
+            Subir nueva foto
+          </Button>
+          {avatar && (
+            <Button danger icon={<DeleteOutlined />} block size="large"
+              style={{ borderRadius: 10, height: 48, fontWeight: 500 }}
+              onClick={handleAvatarDelete}>
+              Eliminar foto
+            </Button>
+          )}
+        </Space>
+      </Modal>
 
       <Modal
         title="Cambiar Contraseña"

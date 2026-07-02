@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { showCrudSuccess } from '../../utils/notifications';
 import api from '../../services/api';
+import { normalizeResponse } from '../../hooks/useCrud';
 import type { OrdenExamen, Paciente, Cita, Servicio } from '../../types';
 import PacienteSearchByDni from '../../components/paciente/PacienteSearchByDni';
 import dayjs from 'dayjs';
@@ -74,7 +75,7 @@ export default function Examenes() {
       const params: Record<string, unknown> = { page, size: 10 };
       if (search) params.search = search;
       const res = await api.get('/ordenes-examen', { params });
-      return res.data;
+      return normalizeResponse<OrdenExamen>(res.data);
     },
   });
 
@@ -159,13 +160,14 @@ export default function Examenes() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nueva Orden</Button>
         </Space>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={isLoading}
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={isLoading} scroll={{ x: 650 }}
+
           pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
       </div>
 
@@ -216,6 +218,8 @@ export default function Examenes() {
           </Form.Item>
         </Form>
       </Modal>
+
+
     </div>
   );
 }

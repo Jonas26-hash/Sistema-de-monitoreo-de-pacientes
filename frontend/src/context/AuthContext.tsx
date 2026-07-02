@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { LoginRequest } from '../types';
 import { login as loginApi, decodeToken } from '../services/auth';
+import api from '../services/api';
 
 export interface AuthUser {
   username: string;
@@ -8,6 +9,7 @@ export interface AuthUser {
   roles: string[];
   nombres?: string;
   apellidos?: string;
+  avatar?: string;
 }
 
 interface AuthContextType {
@@ -38,7 +40,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (decoded) {
         const u: AuthUser = { username: decoded.sub, email: decoded.email, roles: decoded.roles, nombres: decoded.nombres, apellidos: decoded.apellidos };
         setUser(u);
+        if (u.username) {
+          api.get('/auth/profile').then((res) => {
+            const me = res.data;
+            if (me.avatar) {
+              u.avatar = me.avatar;
+              setUser({ ...u });
+              localStorage.setItem('auth_user', JSON.stringify(u));
+            }
+          }).catch(() => {});
+        }
         localStorage.setItem('auth_user', JSON.stringify(u));
+        localStorage.removeItem('user_display_name');
       }
     }
   }, [token]);
@@ -48,9 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await loginApi(data);
       localStorage.setItem('auth_token', res.token);
+      localStorage.removeItem('user_display_name');
       setToken(res.token);
       const decoded = decodeToken(res.token);
-      const u: AuthUser = { username: decoded?.sub || res.username, email: decoded?.email || res.email, roles: decoded?.roles || res.roles, nombres: decoded?.nombres, apellidos: decoded?.apellidos };
+      const u: AuthUser = { username: decoded?.sub || res.username, email: decoded?.email || res.email, roles: decoded?.roles || res.roles, nombres: decoded?.nombres, apellidos: decoded?.apellidos, avatar: res.avatar };
       setUser(u);
       localStorage.setItem('auth_user', JSON.stringify(u));
     } finally {
@@ -61,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    localStorage.removeItem('user_display_name');
     setUser(null);
     setToken(null);
   }, []);
@@ -83,6 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (decoded) {
       const u: AuthUser = { username: decoded.sub, email: decoded.email, roles: decoded.roles, nombres: decoded.nombres, apellidos: decoded.apellidos };
       setUser(u);
+      api.get('/auth/profile').then((res) => {
+        const me = res.data;
+        if (me.avatar) {
+          u.avatar = me.avatar;
+          setUser({ ...u });
+          localStorage.setItem('auth_user', JSON.stringify(u));
+        }
+      }).catch(() => {});
       localStorage.setItem('auth_user', JSON.stringify(u));
     }
   }, []);

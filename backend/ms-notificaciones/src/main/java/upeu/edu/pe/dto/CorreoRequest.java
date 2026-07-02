@@ -12,4 +12,5 @@ public class CorreoRequest {
     public String nombres;
     public String apellidos;
     public boolean esStaff;
+    public String link;
 }

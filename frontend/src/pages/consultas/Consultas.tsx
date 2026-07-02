@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { showCrudSuccess } from '../../utils/notifications';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { normalizeResponse } from '../../hooks/useCrud';
 import type { Consulta, Paciente, Cita, User } from '../../types';
 import PacienteSearchByDni from '../../components/paciente/PacienteSearchByDni';
 import dayjs from 'dayjs';
@@ -54,7 +55,7 @@ export default function Consultas() {
       const params: Record<string, unknown> = { page, size: 10 };
       if (search) params.search = search;
       const res = await api.get('/consultas', { params });
-      return res.data;
+      return normalizeResponse<Consulta>(res.data);
     },
   });
 
@@ -72,7 +73,6 @@ export default function Consultas() {
 
   const columns = [
     { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
-    { title: 'Cita ID', dataIndex: 'citaId', key: 'citaId', render: (v: number) => <Tag style={{ borderRadius: 4 }}>#{v}</Tag> },
     { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Consulta) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; } },
     { title: 'Doctor', key: 'doctorId', render: (v: unknown, r: Consulta) => { const d = usuarios?.find(u => u.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
     { title: 'Fecha', dataIndex: 'fechaConsulta', key: 'fechaConsulta', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</Text> },
@@ -95,20 +95,20 @@ export default function Consultas() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>Nueva Consulta</Button>
         </Space>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={isLoading}
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={isLoading} scroll={{ x: 650 }}
           pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Nueva Consulta</Text>}
         open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => form.submit()} okText="Registrar" width={640} destroyOnClose
         styles={{ body: { padding: '24px 28px' } }}>
-        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate({ ...v, fechaConsulta: v.fechaConsulta?.toISOString?.() ?? v.fechaConsulta })} preserve={false}>
+        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate({ ...v, fechaConsulta: v.fechaConsulta?.format?.('YYYY-MM-DDTHH:mm:ss') ?? v.fechaConsulta })} preserve={false}>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="pacienteId" label="Paciente" rules={[{ required: true }]} style={{ width: '50%' }}>
               <PacienteSearchByDni pacientes={pacientes || []} onSelect={handlePatientSelect} value={selectedPacienteId} onChange={(v) => setSelectedPacienteId(v)} />

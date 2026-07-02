@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
-import { Table, Button, Modal, Form, Input, DatePicker, Select, Tag, Space, Typography, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, UserOutlined, MedicineBoxOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { useState, useCallback, useMemo } from 'react';
+import { Table, Button, Modal, Form, Input, DatePicker, Select, Tag, Space, Typography, message, Descriptions, Divider, Spin } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, UserOutlined, MedicineBoxOutlined, EnvironmentOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCrud } from '../../hooks/useCrud';
+import { useAuth } from '../../context/AuthContext';
 import { showCrudSuccess } from '../../utils/notifications';
 import api from '../../services/api';
 import type { Cita, Paciente, User } from '../../types';
@@ -16,15 +17,49 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Citas() {
+  const { user } = useAuth();
+  const isPaciente = user?.roles?.includes('PACIENTE');
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [createForm] = Form.useForm();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { search, setSearch, data, loading, page, setPage, editing, modalOpen, openEdit, closeModal, handleSave, handleDelete } = useCrud<Cita>({
+  const crud = useCrud<Cita>({
     key: 'citas',
     endpoint: '/citas',
-    dateFields: ['fechaHora'],
+    dateTimeFields: ['fechaHora'],
+  });
+  const { search, setSearch, editing, modalOpen, openEdit, closeModal, handleSave, handleDelete } = crud;
+  const { data: crudData, loading: crudLoading, page, setPage } = crud;
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile-citas'],
+    queryFn: async () => { const r = await api.get('/auth/profile'); return r.data; },
+    enabled: isPaciente,
+  });
+
+  const { data: pacienteCitas, isLoading: pacienteCitasLoading } = useQuery({
+    queryKey: ['citas-paciente', profile?.pacienteId],
+    queryFn: async () => { const r = await api.get(`/citas/paciente/${profile!.pacienteId}`); return r.data as Cita[]; },
+    enabled: isPaciente && !!profile?.pacienteId,
+  });
+
+  const data = isPaciente ? { content: pacienteCitas || [], totalElements: pacienteCitas?.length || 0 } : crudData;
+  const loading = isPaciente ? pacienteCitasLoading : crudLoading;
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedCita, setSelectedCita] = useState<Cita | null>(null);
+
+  const cancelarMutation = useMutation({
+    mutationFn: (cita: Cita) => api.put(`/citas/${cita.id}`, { ...cita, estado: 'CANCELADA' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['citas'] });
+      queryClient.invalidateQueries({ queryKey: ['citas-paciente'] });
+      showCrudSuccess('cancelada', 'Cita');
+      setDetailOpen(false);
+      setSelectedCita(null);
+    },
+    onError: () => Modal.error({ title: 'Error', content: 'Error al cancelar la cita' }),
   });
 
   const { data: pacientes } = useQuery({
@@ -70,6 +105,7 @@ export default function Citas() {
       api.post('/citas/por-dni', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['citas'] });
+      queryClient.invalidateQueries({ queryKey: ['citas-paciente'] });
       showCrudSuccess('creado');
       setCreateOpen(false);
       createForm.resetFields();
@@ -82,6 +118,25 @@ export default function Citas() {
       Modal.error({ title: 'Error', content: msg, centered: true });
     },
   });
+
+  const cambiarEstadoMutation = useMutation({
+    mutationFn: ({ id, estado }: { id: number; estado: string }) => {
+      const cita = data?.content?.find(c => c.id === id);
+      if (!cita) throw new Error('Cita no encontrada');
+      return api.put(`/citas/${id}`, { ...cita, estado });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['citas'] });
+      queryClient.invalidateQueries({ queryKey: ['citas-paciente'] });
+      showCrudSuccess('actualizado', 'Estado de cita');
+    },
+    onError: () => Modal.error({ title: 'Error', content: 'Error al cambiar estado de la cita' }),
+  });
+
+  const citasOrdenadas = useMemo(() => {
+    if (!data?.content) return [];
+    return [...data.content].sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime());
+  }, [data?.content]);
 
   const isProfileComplete = (p: Paciente) => p.fechaNacimiento && p.genero && p.direccion;
 
@@ -117,7 +172,7 @@ export default function Citas() {
 
   const handleFechaHoraChange = useCallback((date: dayjs.Dayjs | null) => {
     if (date) {
-      setFechaHora(date.toISOString());
+      setFechaHora(date.format('YYYY-MM-DDTHH:mm:ss'));
     } else {
       setFechaHora(null);
     }
@@ -126,7 +181,7 @@ export default function Citas() {
   const handleCreateSubmit = useCallback(async () => {
     try {
       const values = await createForm.validateFields();
-      crearMutation.mutate({ ...values, fechaHora: values.fechaHora?.toISOString?.() ?? values.fechaHora });
+      crearMutation.mutate({ ...values, fechaHora: values.fechaHora?.format?.('YYYY-MM-DDTHH:mm:ss') ?? values.fechaHora });
     } catch { }
   }, [createForm, crearMutation]);
 
@@ -139,24 +194,42 @@ export default function Citas() {
   }, [createForm]);
 
   const columns = [
-    { title: 'Nº', key: 'index', width: 60, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
-    { title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Cita) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; } },
-    { title: 'Doctor', key: 'doctorId', render: (v: unknown, r: Cita) => { const d = (doctores || []).find(d => d.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}{d.especialidad ? ` (${d.especialidad})` : ''}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
-    { title: 'Fecha', dataIndex: 'fechaHora', key: 'fechaHora', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</Text> },
-    { title: 'Motivo', dataIndex: 'motivo', key: 'motivo', ellipsis: true, render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
+    { title: 'Nº', key: 'index', width: 50, render: (_v: unknown, _r: unknown, i: number) => <Text style={{ color: 'var(--text-muted)' }}>{i + 1}</Text> },
+    ...(!isPaciente ? [{
+      title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Cita) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space size={4} wrap><UserOutlined style={{ color: '#00D4AA', fontSize: 14 }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11, marginRight: 0 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; }
+    }] : []),
+    { title: 'Doctor', key: 'doctorId', responsive: ['md'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: unknown, r: Cita) => { const d = (doctores || []).find(d => d.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}{d.especialidad ? ` (${d.especialidad})` : ''}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
+    { title: 'Fecha', dataIndex: 'fechaHora', key: 'fechaHora', responsive: ['sm'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: string) => { const esHoy = dayjs(v).isSame(dayjs(), 'day'); return (<Space><Text style={{ color: 'var(--text-secondary)' }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</Text>{esHoy && <Tag color="#00D4AA" style={{ borderRadius: 4, fontSize: 11, lineHeight: '18px', marginRight: 0 }}>Hoy</Tag>}</Space>); } },
+    { title: 'Motivo', dataIndex: 'motivo', key: 'motivo', ellipsis: true, responsive: ['md'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     {
       title: 'Estado', dataIndex: 'estado', key: 'estado',
-      render: (v: string) => <Tag color={statusColors[v] || 'var(--text-muted)'} style={{ borderRadius: 4 }}>{v}</Tag>,
-    },
-    {
-      title: '', key: 'acciones', width: 100,
-      render: (_: unknown, r: Cita) => (
+      render: (v: string, r: Cita) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} style={{ color: '#3B82F6' }} onClick={() => openEdit(r)} />
-          <Button type="text" icon={<DeleteOutlined />} style={{ color: '#EF4444' }} onClick={() => handleDelete(r.id!)} />
+          <Tag color={statusColors[v] || 'var(--text-muted)'} style={{ borderRadius: 4 }}>{v}</Tag>
+          {!isPaciente && v === 'PROGRAMADA' && (
+            <Button type="primary" size="small" style={{ background: '#00D4AA', borderColor: '#00D4AA', borderRadius: 6, height: 24, fontSize: 12 }}
+              onClick={() => cambiarEstadoMutation.mutate({ id: r.id!, estado: 'EN_CURSO' })}>
+              Atender
+            </Button>
+          )}
+          {!isPaciente && v === 'EN_CURSO' && (
+            <Button type="primary" size="small" style={{ background: '#3B82F6', borderColor: '#3B82F6', borderRadius: 6, height: 24, fontSize: 12 }}
+              onClick={() => cambiarEstadoMutation.mutate({ id: r.id!, estado: 'COMPLETADA' })}>
+              Completar
+            </Button>
+          )}
         </Space>
       ),
     },
+    ...(!isPaciente ? [{
+      title: '', key: 'acciones', width: 90,
+      render: (_: unknown, r: Cita) => (
+        <Space size="small">
+          <Button type="text" size="small" icon={<EditOutlined />} style={{ color: '#3B82F6' }} onClick={() => openEdit(r)} />
+          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#EF4444' }} onClick={() => handleDelete(r.id!)} />
+        </Space>
+      ),
+    }] : []),
   ];
 
   return (
@@ -174,14 +247,15 @@ export default function Citas() {
           </Space>
         </div>
         <Space>
-          <Input.Search placeholder="Buscar citas..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <Input.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { setCreateOpen(true); setSelectedPaciente(null); setFechaHora(null); setDoctoresOcupados([]); createForm.resetFields(); }}>Nueva Cita</Button>
         </Space>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading}
-          pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={citasOrdenadas} rowKey="id" loading={loading} scroll={{ x: 650 }}
+          onRow={(r) => ({ onClick: () => { setSelectedCita(r); setDetailOpen(true); }, style: { cursor: 'pointer' } })}
+          pagination={{ current: page + 1, total: citasOrdenadas.length, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Editar Cita</Text>}
@@ -302,6 +376,55 @@ export default function Citas() {
             <Input.TextArea rows={2} placeholder="Dirección" style={{ borderRadius: 10 }} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Detalle de Cita #{selectedCita?.id}</Text>}
+        open={detailOpen} onCancel={() => { setDetailOpen(false); setSelectedCita(null); }} footer={null} width={600} destroyOnClose
+        styles={{ body: { padding: '24px 28px' } }}>
+        {!selectedCita ? <Spin /> : (
+          <>
+            <Descriptions bordered column={1} size="small" labelStyle={{ fontWeight: 500, color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.02)' }} contentStyle={{ color: 'var(--text-primary)' }}>
+              {!isPaciente && (
+                <Descriptions.Item label="Paciente">
+                  {(() => { const p = pacienteMap.get(selectedCita.pacienteId); return p ? `${p.nombres} ${p.apellidoPaterno} (${p.dni})` : `#${selectedCita.pacienteId}`; })()}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="Doctor">
+                {(() => { const d = (doctores || []).find(d => d.id === selectedCita.doctorId); return d ? `Dr. ${d.nombres} ${d.apellidos}` : `#${selectedCita.doctorId}`; })()}
+              </Descriptions.Item>
+              <Descriptions.Item label="Fecha y Hora">{dayjs(selectedCita.fechaHora).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+              <Descriptions.Item label="Motivo">{selectedCita.motivo || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Estado">
+                <Tag color={statusColors[selectedCita.estado] || 'default'}>{selectedCita.estado}</Tag>
+              </Descriptions.Item>
+              {selectedCita.observaciones && <Descriptions.Item label="Observaciones">{selectedCita.observaciones}</Descriptions.Item>}
+              {selectedCita.precio != null && <Descriptions.Item label="Precio">S/. {selectedCita.precio.toFixed(2)}</Descriptions.Item>}
+            </Descriptions>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <Button onClick={() => { setDetailOpen(false); setSelectedCita(null); }}>Cerrar</Button>
+              {!isPaciente && (
+                <Button icon={<EditOutlined />} onClick={() => { setDetailOpen(false); openEdit(selectedCita); }}>
+                  Editar
+                </Button>
+              )}
+              {isPaciente && ['PROGRAMADA', 'CONFIRMADA'].includes(selectedCita.estado) && (
+                <Button danger type="primary" icon={<CloseCircleOutlined />}
+                  loading={cancelarMutation.isPending}
+                  onClick={() => Modal.confirm({
+                    title: 'Cancelar Cita',
+                    content: `¿Estás seguro de cancelar la cita #${selectedCita.id} del ${dayjs(selectedCita.fechaHora).format('DD/MM/YYYY HH:mm')}?`,
+                    okText: 'Sí, cancelar',
+                    okButtonProps: { danger: true },
+                    cancelText: 'No, mantener',
+                    onOk: () => cancelarMutation.mutate(selectedCita),
+                  })}>
+                  Cancelar Cita
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </Modal>
     </div>
   );

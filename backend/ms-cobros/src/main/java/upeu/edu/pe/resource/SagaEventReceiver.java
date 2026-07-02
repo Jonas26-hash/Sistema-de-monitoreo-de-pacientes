@@ -27,6 +27,10 @@ public class SagaEventReceiver {
                 String resultado = sagaService.procesarCitaCreada(event.payload);
                 return Response.ok("{\"status\":\"" + resultado + "\"}").build();
             }
+            if ("CONSULTA_CREADA".equals(event.eventType)) {
+                String resultado = sagaService.procesarConsultaCreada(event.payload);
+                return Response.ok("{\"status\":\"" + resultado + "\"}").build();
+            }
             return Response.ok("{\"status\":\"ignored\"}").build();
         } catch (Exception e) {
             try {

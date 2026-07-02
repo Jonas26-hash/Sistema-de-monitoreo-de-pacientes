@@ -3,6 +3,7 @@ package upeu.edu.pe.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,6 +11,7 @@ import java.util.List;
 @Table(name = "ordenes_examen")
 public class OrdenExamen extends PanacheEntity {
 
+    @NotNull
     @Column(name = "paciente_id", nullable = false)
     public Long pacienteId;
 
@@ -19,6 +21,7 @@ public class OrdenExamen extends PanacheEntity {
     @Column(name = "doctor_id")
     public Long doctorId;
 
+    @NotNull
     @Column(nullable = false)
     public String tipo;
 
@@ -32,9 +35,11 @@ public class OrdenExamen extends PanacheEntity {
     @DecimalMin("0.00")
     public Double costo;
 
+    @NotNull
     @Column(nullable = false)
     public String estado;
 
+    @NotNull
     @Column(name = "fecha_orden", nullable = false)
     public LocalDateTime fechaOrden;
 

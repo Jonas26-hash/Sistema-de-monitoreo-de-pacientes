@@ -33,6 +33,7 @@ export interface Paciente {
   numeroPoliza?: string;
   vigenciaSeguro?: string;
   activo?: boolean;
+  solicitaCuenta?: boolean;
 }
 
 export interface Cita {
@@ -70,6 +71,7 @@ export interface Receta {
   dispensada?: boolean;
   fechaDispensacion?: string;
   pagado?: boolean;
+  costo?: number;
 }
 
 export interface Medicamento {
@@ -168,6 +170,18 @@ export interface Notificacion {
   fechaEnvio?: string;
   enviada: boolean;
   canal?: string;
+  leida: boolean;
+  remitenteId?: number;
+  remitenteTipo?: string;
+  remitenteNombre?: string;
+}
+
+export interface HistorialEntry {
+  tipo: 'CITA' | 'TRIAJE' | 'CONSULTA' | 'EXAMEN' | 'RECETA';
+  fecha: string;
+  titulo: string;
+  descripcion: string;
+  data: Record<string, unknown>;
 }
 
 export interface AuditLog {
@@ -193,6 +207,7 @@ export interface LoginResponse {
   username: string;
   email: string;
   roles: string[];
+  avatar?: string;
 }
 
 export interface PaginatedResponse<T> {

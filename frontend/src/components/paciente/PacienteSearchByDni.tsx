@@ -1,5 +1,5 @@
 import { Select, Space, Typography } from 'antd';
-import { SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { UserOutlined } from '@ant-design/icons';
 import type { Paciente } from '../../types';
 
 const { Text } = Typography;
@@ -28,21 +28,23 @@ export default function PacienteSearchByDni({ pacientes, loading, onSelect, plac
         onChange?.(val ?? null);
       }}
       filterOption={(input, option) => {
-        const label = option?.label?.toString() ?? '';
-        return label.toLowerCase().includes(input.toLowerCase());
+        return pacientes.some(p =>
+          p.id === option?.value &&
+          (`${p.nombres} ${p.apellidoPaterno} ${p.dni}`.toLowerCase().includes(input.toLowerCase()))
+        );
       }}
       style={{ width: '100%' }}
       notFoundContent={loading ? 'Cargando...' : 'No se encontraron pacientes'}
       options={pacientes.map(p => ({
-        label: (
-          <Space size={8}>
-            <UserOutlined style={{ color: 'var(--text-muted)', fontSize: 13 }} />
-            <Text style={{ fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text>
-            <Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>DNI: {p.dni}</Text>
-          </Space>
-        ),
+        label: `${p.nombres} ${p.apellidoPaterno} - DNI: ${p.dni}`,
         value: p.id,
       }))}
+      optionRender={(option) => (
+        <Space size={8}>
+          <UserOutlined style={{ color: 'var(--text-muted)', fontSize: 13 }} />
+          <Text style={{ fontWeight: 500 }}>{option.data.label}</Text>
+        </Space>
+      )}
     />
   );
 }

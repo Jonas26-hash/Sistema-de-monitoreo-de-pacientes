@@ -3,13 +3,21 @@ package upeu.edu.pe;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -26,6 +34,12 @@ public class GatewayResource {
 
     @Context
     HttpHeaders incomingHeaders;
+
+    @Context
+    UriInfo uriInfo;
+
+    @Context
+    ContainerRequestContext requestContext;
 
     private String url(String service) { return discovery.getUrl(service); }
 
@@ -51,8 +65,22 @@ public class GatewayResource {
     @Path("/auth/usuarios")
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response getAuthUsuarios(@HeaderParam("Authorization") String authHeader) {
-        return handleResponse(buildGet(url("ms-pacientes"), "auth/usuarios", authHeader));
+    public Response getAuthUsuarios(@QueryParam("page") @DefaultValue("0") int page,
+                                    @QueryParam("size") @DefaultValue("10") int size,
+                                    @QueryParam("search") String search,
+                                    @HeaderParam("Authorization") String authHeader) {
+        WebTarget target = client.target(url("ms-pacientes")).path("auth/usuarios")
+            .queryParam("page", page)
+            .queryParam("size", size);
+        if (search != null && !search.isBlank()) {
+            target = target.queryParam("search", search);
+        }
+        var request = target.request(MediaType.APPLICATION_JSON);
+        if (authHeader != null && !authHeader.isEmpty()) {
+            request = request.header("Authorization", authHeader);
+        }
+        addCorrelationId(request);
+        return handleResponse(request.get());
     }
 
     @GET
@@ -73,46 +101,58 @@ public class GatewayResource {
 
     @POST
     @Path("/auth/login")
-    @Consumes(MediaType.APPLICATION_JSON)
     @Retry(maxRetries = 2, delay = 200)
-    @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyLogin(String body, @HeaderParam("Authorization") String authHeader) {
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response proxyLogin(@HeaderParam("Authorization") String authHeader) {
+        Object prop = requestContext.getProperty("rawBody");
+        byte[] body = prop instanceof byte[] ? (byte[]) prop : new byte[0];
+        gwLog.info("PROXY_LOGIN body {} bytes: {}", body.length,
+            new String(body, 0, Math.min(body.length, 80), StandardCharsets.UTF_8));
         return handleResponse(buildPost(url("ms-pacientes"), "auth/login", body, authHeader));
     }
 
     @POST
+    @Path("/auth/debug/echo")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response debugEcho() {
+        Object prop = requestContext.getProperty("rawBody");
+        byte[] body = prop instanceof byte[] ? (byte[]) prop : new byte[0];
+        return Response.ok(new String(body, StandardCharsets.UTF_8)).build();
+    }
+
+    @POST
     @Path("/auth/pre-registro")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyPreRegistro(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyPreRegistro(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/pre-registro", body, authHeader));
     }
 
     @POST
     @Path("/auth/verificar-codigo")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyVerificarCodigo(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyVerificarCodigo(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/verificar-codigo", body, authHeader));
     }
 
     @POST
     @Path("/auth/completar-registro")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyCompletarRegistro(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyCompletarRegistro(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/completar-registro", body, authHeader));
     }
 
     @POST
     @Path("/auth/register")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyRegister(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyRegister(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/register", body, authHeader));
     }
 
@@ -126,19 +166,19 @@ public class GatewayResource {
 
     @PUT
     @Path("/auth/profile")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyUpdateProfile(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyUpdateProfile(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-pacientes"), "auth/profile", body, authHeader));
     }
 
     @PUT
     @Path("/auth/change-password")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyChangePassword(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyChangePassword(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-pacientes"), "auth/change-password", body, authHeader));
     }
 
@@ -152,53 +192,62 @@ public class GatewayResource {
 
     @PUT
     @Path("/auth/config")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response putAuthConfig(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response putAuthConfig(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-pacientes"), "auth/config", body, authHeader));
     }
 
     @POST
     @Path("/auth/forgot-password")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response proxyForgotPassword(String body) {
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyForgotPassword(byte[] body) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/forgot-password", body, null));
     }
 
     @POST
     @Path("/auth/reset-password")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response proxyResetPassword(String body) {
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyResetPassword(byte[] body) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/reset-password", body, null));
     }
 
     @POST
     @Path("/auth/self-register")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response proxySelfRegister(String body) {
+    @Consumes(MediaType.WILDCARD)
+    public Response proxySelfRegister(byte[] body) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/self-register", body, null));
     }
 
     @POST
     @Path("/auth/register-init")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response proxyRegisterInit(String body) {
+    @Consumes(MediaType.WILDCARD)
+    public Response proxyRegisterInit(byte[] body) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/register-init", body, null));
     }
 
     @POST
-    @Path("/auth/pre-registro-personal")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/auth/registro-paciente-desde-lista")
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response proxyPreRegistroPersonal(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response proxyRegistroPacienteLista(byte[] body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPost(url("ms-pacientes"), "auth/registro-paciente-desde-lista", body, authHeader));
+    }
+
+    @POST
+    @Path("/auth/pre-registro-personal")
+    @Consumes(MediaType.WILDCARD)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackAuth")
+    public Response proxyPreRegistroPersonal(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-pacientes"), "auth/pre-registro-personal", body, authHeader));
     }
 
     @PUT
     @Path("/auth/pendientes/{id}/aprobar")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
     public Response proxyAprobarPendiente(@PathParam("id") Long id, @HeaderParam("Authorization") String authHeader) {
@@ -238,14 +287,14 @@ public class GatewayResource {
 
     @POST
     @Path("/pacientes")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
     @Fallback(fallbackMethod = "fallbackPostPacientes")
-    public Response postPacientes(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postPacientes(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-pacientes"), "pacientes", body, authHeader));
     }
 
-    public Response fallbackPostPacientes(String body, String authHeader, Throwable t) {
+    public Response fallbackPostPacientes(byte[] body, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"No se pudo crear el paciente\",\"mensaje\":\"Servicio no disponible\",\"type\":\"FALLBACK\"}")
             .build();
@@ -253,18 +302,26 @@ public class GatewayResource {
 
     @PUT
     @Path("/pacientes/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackPutPacientesPath")
-    public Response putPacientesPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+    public Response putPacientesPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-pacientes"), "pacientes/" + path, body, authHeader));
     }
 
-    public Response fallbackPutPacientesPath(String path, String body, String authHeader, Throwable t) {
+    public Response fallbackPutPacientesPath(String path, byte[] body, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"No se pudo actualizar el paciente\",\"mensaje\":\"Servicio no disponible\",\"type\":\"FALLBACK\"}")
             .build();
+    }
+
+    @DELETE
+    @Path("/pacientes/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response deletePacientesPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildDelete(url("ms-pacientes"), "pacientes/" + path, authHeader));
     }
 
     // ============ CITAS ============
@@ -285,32 +342,16 @@ public class GatewayResource {
 
     @POST
     @Path("/citas")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
-    @Fallback(fallbackMethod = "fallbackPostCitas")
-    public Response postCitas(String body, @HeaderParam("Authorization") String authHeader,
+    @Consumes(MediaType.WILDCARD)
+    public Response postCitas(byte[] body, @HeaderParam("Authorization") String authHeader,
             @HeaderParam("Idempotency-Key") String idempotencyKey) {
         return handleResponse(buildPost(url("ms-atencion"), "citas", body, authHeader, idempotencyKey));
     }
 
-    public Response fallbackPostCitas(String body, String authHeader, String idempotencyKey, Throwable t) {
-        return Response.status(503)
-            .entity("{\"error\":\"No se pudo crear la cita\",\"mensaje\":\"Servicio no disponible\",\"type\":\"FALLBACK\"}")
-            .build();
-    }
-
-    public Response fallbackPostCitas(String path, String body, String authHeader, String idempotencyKey, Throwable t) {
-        return Response.status(503)
-            .entity("{\"error\":\"No se pudo crear la cita\",\"mensaje\":\"Servicio no disponible\",\"type\":\"FALLBACK\"}")
-            .build();
-    }
-
     @POST
     @Path("/citas/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.5, delay = 10000)
-    @Fallback(fallbackMethod = "fallbackPostCitas")
-    public Response postCitasPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader,
+    @Consumes(MediaType.WILDCARD)
+    public Response postCitasPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader,
             @HeaderParam("Idempotency-Key") String idempotencyKey) {
         return handleResponse(buildPost(url("ms-atencion"), "citas/" + path, body, authHeader, idempotencyKey));
     }
@@ -322,6 +363,13 @@ public class GatewayResource {
     @Fallback(fallbackMethod = "fallbackCitasPath")
     public Response getCitasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildGet(url("ms-atencion"), "citas/" + path, authHeader));
+    }
+
+    @PUT
+    @Path("/citas/{path:.*}")
+    @Consumes(MediaType.WILDCARD)
+    public Response putCitasPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPut(url("ms-atencion"), "citas/" + path, body, authHeader));
     }
 
     public Response fallbackCitasPath(String path, String authHeader, Throwable t) {
@@ -349,10 +397,10 @@ public class GatewayResource {
 
     @POST
     @Path("/consultas")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postConsultas(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postConsultas(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-atencion"), "consultas", body, authHeader));
     }
 
@@ -375,20 +423,29 @@ public class GatewayResource {
 
     @POST
     @Path("/triajes")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postTriajes(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postTriajes(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-atencion"), "triajes", body, authHeader));
     }
 
     @PUT
     @Path("/triajes/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response putTriajesPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+    public Response putTriajesPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-atencion"), "triajes/" + path, body, authHeader));
+    }
+
+    // ============ HISTORIAL ============
+    @GET
+    @Path("/historial/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response getHistorialPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-atencion"), "historial/" + path, authHeader));
     }
 
     // ============ ORDENES EXAMEN ============
@@ -410,19 +467,19 @@ public class GatewayResource {
 
     @POST
     @Path("/ordenes-examen")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postOrdenesExamen(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postOrdenesExamen(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-atencion"), "ordenes-examen", body, authHeader));
     }
 
     @PUT
     @Path("/ordenes-examen/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response putOrdenesExamenPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+    public Response putOrdenesExamenPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-atencion"), "ordenes-examen/" + path, body, authHeader));
     }
 
@@ -453,19 +510,19 @@ public class GatewayResource {
 
     @POST
     @Path("/recetas")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postRecetas(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postRecetas(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-recetas"), "recetas", body, authHeader));
     }
 
     @PUT
     @Path("/recetas/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response putRecetasPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+    public Response putRecetasPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-recetas"), "recetas/" + path, body, authHeader));
     }
 
@@ -488,10 +545,10 @@ public class GatewayResource {
 
     @POST
     @Path("/medicamentos")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postMedicamentos(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postMedicamentos(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-farmacia"), "medicamentos", body, authHeader));
     }
 
@@ -514,10 +571,10 @@ public class GatewayResource {
 
     @POST
     @Path("/dispensaciones")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postDispensaciones(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postDispensaciones(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-farmacia"), "dispensaciones", body, authHeader));
     }
 
@@ -556,20 +613,72 @@ public class GatewayResource {
 
     @POST
     @Path("/cobros/pago-unico")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postCobrosPagoUnico(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postCobrosPagoUnico(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-cobros"), "cobros/pago-unico", body, authHeader));
     }
 
     @POST
     @Path("/cobros")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postCobros(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postCobros(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-cobros"), "cobros", body, authHeader));
+    }
+
+    // ============ SERVICIOS ============
+    @GET
+    @Path("/servicios")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response getServicios(@HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-cobros"), "servicios", authHeader));
+    }
+
+    @GET
+    @Path("/servicios/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response getServiciosPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-cobros"), "servicios/" + path, authHeader));
+    }
+
+    @POST
+    @Path("/servicios")
+    @Consumes(MediaType.WILDCARD)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response postServicios(byte[] body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPost(url("ms-cobros"), "servicios", body, authHeader));
+    }
+
+    // ============ CAMPANIAS ============
+    @GET
+    @Path("/campanias")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response getCampanias(@HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-cobros"), "campanias", authHeader));
+    }
+
+    @GET
+    @Path("/campanias/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response getCampaniasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-cobros"), "campanias/" + path, authHeader));
+    }
+
+    @POST
+    @Path("/campanias")
+    @Consumes(MediaType.WILDCARD)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response postCampanias(byte[] body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPost(url("ms-cobros"), "campanias", body, authHeader));
     }
 
     // ============ NOTIFICACIONES ============
@@ -591,20 +700,29 @@ public class GatewayResource {
 
     @POST
     @Path("/notificaciones")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postNotificaciones(String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postNotificaciones(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-notificaciones"), "notificaciones", body, authHeader));
     }
 
     @POST
     @Path("/notificaciones/{path:.*}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response postNotificacionesPath(@PathParam("path") String path, String body, @HeaderParam("Authorization") String authHeader) {
+    public Response postNotificacionesPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-notificaciones"), "notificaciones/" + path, body, authHeader));
+    }
+
+    @PUT
+    @Path("/notificaciones/{path:.*}")
+    @Consumes(MediaType.WILDCARD)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response putNotificacionesPath(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPut(url("ms-notificaciones"), "notificaciones/" + path, body, authHeader));
     }
 
     // ============ AUDIT ============
@@ -626,12 +744,12 @@ public class GatewayResource {
 
     @POST
     @Path("/audit")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response postAudit(String body) {
+    @Consumes(MediaType.WILDCARD)
+    public Response postAudit(byte[] body) {
         return handleResponse(buildPost(url("ms-pacientes"), "audit", body, null));
     }
 
-    public Response fallbackAuth(String body, String authHeader, Throwable t) {
+    public Response fallbackAuth(byte[] body, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"Servicio de autenticación no disponible\",\"type\":\"FALLBACK\"}")
             .build();
@@ -640,6 +758,12 @@ public class GatewayResource {
     public Response fallbackAuth(Long id, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"Servicio de autenticación no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackGenerico(byte[] body, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
             .build();
     }
 
@@ -663,10 +787,10 @@ public class GatewayResource {
 
     @PUT
     @Path("/auth/usuarios/{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackAuth")
-    public Response putAuthUsuariosId(@PathParam("id") Long id, String body, @HeaderParam("Authorization") String authHeader) {
+    public Response putAuthUsuariosId(@PathParam("id") Long id, byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPut(url("ms-pacientes"), "auth/usuarios/" + id, body, authHeader));
     }
 
@@ -678,7 +802,7 @@ public class GatewayResource {
         return handleResponse(buildDelete(url("ms-pacientes"), "auth/usuarios/" + id, authHeader));
     }
 
-    public Response fallbackAuth(Long id, String body, String authHeader, Throwable t) {
+    public Response fallbackAuth(Long id, byte[] body, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"Servicio de autenticación no disponible\",\"type\":\"FALLBACK\"}")
             .build();
@@ -690,7 +814,13 @@ public class GatewayResource {
             .build();
     }
 
-    public Response fallbackGenerico(String path, String body, String authHeader, Throwable t) {
+    public Response fallbackGenerico(String path, byte[] body, String authHeader, Throwable t) {
+        return Response.status(503)
+            .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
+            .build();
+    }
+
+    public Response fallbackGenerico(int page, int size, String search, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"Servicio temporalmente no disponible\",\"type\":\"FALLBACK\"}")
             .build();
@@ -708,72 +838,130 @@ public class GatewayResource {
     }
 
     private Response buildGet(String baseUrl, String path, String authHeader) {
-        var request = client.target(baseUrl)
-            .path(path)
-            .request(MediaType.APPLICATION_JSON);
-        if (authHeader != null && !authHeader.isEmpty()) {
-            request = request.header("Authorization", authHeader);
+        try {
+            WebTarget target = client.target(baseUrl).path(path);
+            MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
+            for (Map.Entry<String, List<String>> entry : queryParams.entrySet()) {
+                for (String value : entry.getValue()) {
+                    target = target.queryParam(entry.getKey(), value);
+                }
+            }
+            var request = target.request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            addCorrelationId(request);
+            return request.get();
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            return e.getResponse();
         }
-        addCorrelationId(request);
-        return request.get();
     }
 
-    private Response buildPost(String baseUrl, String path, String body, String authHeader) {
-        var request = client.target(baseUrl)
-            .path(path)
-            .request(MediaType.APPLICATION_JSON);
-        if (authHeader != null && !authHeader.isEmpty()) {
-            request = request.header("Authorization", authHeader);
-        }
-        addCorrelationId(request);
-        return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
+    private static final org.slf4j.Logger gwLog = org.slf4j.LoggerFactory.getLogger("GatewayResource");
+
+    private Response buildPost(String baseUrl, String path, byte[] bodyBytes, String authHeader) {
+        return buildPost(baseUrl, path, bodyBytes, authHeader, null);
     }
 
-    private Response buildPost(String baseUrl, String path, String body, String authHeader, String idempotencyKey) {
-        var request = client.target(baseUrl)
-            .path(path)
-            .request(MediaType.APPLICATION_JSON);
-        if (authHeader != null && !authHeader.isEmpty()) {
-            request = request.header("Authorization", authHeader);
+    private Response buildPost(String baseUrl, String path, byte[] bodyBytes, String authHeader, String idempotencyKey) {
+        try {
+            var url = new java.net.URL(baseUrl + "/" + path);
+            gwLog.info("POST {} -> {} ({} bytes)", url.toString(),
+                bodyBytes != null ? new String(bodyBytes, 0, Math.min(bodyBytes.length, 60), StandardCharsets.UTF_8) : "null",
+                bodyBytes != null ? bodyBytes.length : 0);
+            var conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+            if (authHeader != null && !authHeader.isEmpty()) {
+                conn.setRequestProperty("Authorization", authHeader);
+            }
+            if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
+                conn.setRequestProperty("Idempotency-Key", idempotencyKey);
+            }
+            String cid = correlationId();
+            if (cid != null) conn.setRequestProperty("X-Request-Id", cid);
+            conn.setDoOutput(true);
+            conn.setUseCaches(false);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(10000);
+            if (bodyBytes != null && bodyBytes.length > 0) {
+                conn.setFixedLengthStreamingMode(bodyBytes.length);
+                try (var os = conn.getOutputStream()) {
+                    os.write(bodyBytes);
+                    os.flush();
+                }
+            }
+            int status = conn.getResponseCode();
+            String responseBody;
+            try (var stream = status >= 400 ? conn.getErrorStream() : conn.getInputStream()) {
+                if (stream == null) {
+                    responseBody = "[null stream]";
+                } else {
+                    responseBody = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+            gwLog.info("GW_POST_RESULT {} -> status={} body={}", url.toString(), status, responseBody);
+            return Response.status(status)
+                .type(MediaType.APPLICATION_JSON)
+                .entity(responseBody)
+                .build();
+        } catch (Exception e) {
+            gwLog.error("POST {} failed: {} {} {}", baseUrl + "/" + path, e.getClass().getName(), e.getMessage(), e);
+            jakarta.ws.rs.WebApplicationException wae;
+            if (e instanceof jakarta.ws.rs.WebApplicationException) {
+                wae = (jakarta.ws.rs.WebApplicationException) e;
+            } else {
+                wae = new jakarta.ws.rs.WebApplicationException(e.getMessage(), e, Response.Status.INTERNAL_SERVER_ERROR);
+            }
+            return wae.getResponse();
         }
-        if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
-            request = request.header("Idempotency-Key", idempotencyKey);
-        }
-        addCorrelationId(request);
-        return request.post(Entity.entity(body, MediaType.APPLICATION_JSON));
     }
 
     private Response buildPut(String baseUrl, String path, String authHeader) {
-        var request = client.target(baseUrl)
-            .path(path)
-            .request(MediaType.APPLICATION_JSON);
-        if (authHeader != null && !authHeader.isEmpty()) {
-            request = request.header("Authorization", authHeader);
+        try {
+            var request = client.target(baseUrl)
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            addCorrelationId(request);
+            return request.put(Entity.entity("", MediaType.APPLICATION_JSON));
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            return e.getResponse();
         }
-        addCorrelationId(request);
-        return request.put(Entity.entity("", MediaType.APPLICATION_JSON));
     }
 
-    private Response buildPut(String baseUrl, String path, String body, String authHeader) {
-        var request = client.target(baseUrl)
-            .path(path)
-            .request(MediaType.APPLICATION_JSON);
-        if (authHeader != null && !authHeader.isEmpty()) {
-            request = request.header("Authorization", authHeader);
+    private Response buildPut(String baseUrl, String path, byte[] bodyBytes, String authHeader) {
+        try {
+            var body = bodyBytes != null ? new String(bodyBytes, StandardCharsets.UTF_8) : "";
+            var request = client.target(baseUrl)
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            addCorrelationId(request);
+            return request.put(Entity.entity(body, MediaType.APPLICATION_JSON));
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            return e.getResponse();
         }
-        addCorrelationId(request);
-        return request.put(Entity.entity(body, MediaType.APPLICATION_JSON));
     }
 
     private Response buildDelete(String baseUrl, String path, String authHeader) {
-        var request = client.target(baseUrl)
-            .path(path)
-            .request(MediaType.APPLICATION_JSON);
-        if (authHeader != null && !authHeader.isEmpty()) {
-            request = request.header("Authorization", authHeader);
+        try {
+            var request = client.target(baseUrl)
+                .path(path)
+                .request(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                request = request.header("Authorization", authHeader);
+            }
+            addCorrelationId(request);
+            return request.delete();
+        } catch (jakarta.ws.rs.WebApplicationException e) {
+            return e.getResponse();
         }
-        addCorrelationId(request);
-        return request.delete();
     }
 
     private Response handleResponse(Response response) {

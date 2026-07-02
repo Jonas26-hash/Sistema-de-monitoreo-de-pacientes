@@ -2,6 +2,7 @@ package upeu.edu.pe.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
@@ -17,10 +18,16 @@ import java.util.List;
 public class CobroService {
 
     private final Client client = ClientBuilder.newClient();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-    public List<Cobro> listar() {
-        return Cobro.listAll();
+    public List<Cobro> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Cobro.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Cobro.list("LOWER(descripcion) LIKE ?1 OR LOWER(tipo) LIKE ?1", pattern);
     }
 
     public List<Cobro> findByPaciente(Long pacienteId) {
@@ -39,7 +46,7 @@ public class CobroService {
             cobro.fechaCobro = LocalDate.now();
         }
         if (cobro.estado == null) {
-            cobro.estado = "PAGADO";
+            cobro.estado = "PENDIENTE";
         }
         cobro.persist();
         return cobro;
@@ -57,9 +64,12 @@ public class CobroService {
                 .request(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
-            return "{\"recetas\":" + recetasJson + ",\"examenes\":" + examenesJson + "}";
+            List<Cobro> cobrosPendientes = Cobro.list("pacienteId = ?1 AND estado = 'PENDIENTE'", pacienteId);
+            String cobrosJson = mapper.writeValueAsString(cobrosPendientes);
+
+            return "{\"recetas\":" + recetasJson + ",\"examenes\":" + examenesJson + ",\"cobros\":" + cobrosJson + "}";
         } catch (Exception e) {
-            return "{\"recetas\":[],\"examenes\":[],\"error\":\"" +
+            return "{\"recetas\":[],\"examenes\":[],\"cobros\":[],\"error\":\"" +
                 e.getMessage().replace("\"", "'") + "\"}";
         }
     }
@@ -103,6 +113,18 @@ public class CobroService {
                             .path("ordenes-examen/" + idNode.asLong() + "/pagar")
                             .request(MediaType.APPLICATION_JSON)
                             .put(Entity.entity("", MediaType.APPLICATION_JSON));
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            if (json.has("cobroIds") && json.get("cobroIds").isArray()) {
+                for (JsonNode idNode : json.get("cobroIds")) {
+                    try {
+                        Cobro c = Cobro.findById(idNode.asLong());
+                        if (c != null) {
+                            c.estado = "PAGADO";
+                            c.persist();
+                        }
                     } catch (Exception ignored) {}
                 }
             }

@@ -12,6 +12,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ import upeu.edu.pe.dto.AuthResponse;
 import upeu.edu.pe.service.AuthService;
 import upeu.edu.pe.service.CodigoService;
 import upeu.edu.pe.service.NotificacionesClient;
+import upeu.edu.pe.service.PacienteService;
 import upeu.edu.pe.service.UsernameGenerator;
 
 @Path("/auth")
@@ -50,6 +52,106 @@ public class PreRegistroResource {
 
     @Inject
     AuthService authService;
+
+    @Inject
+    PacienteService pacienteService;
+
+    @POST
+    @Path("/registro-paciente-desde-lista")
+    @Transactional
+    @RolesAllowed("ADMIN")
+    public Response registroPacienteDesdeLista(Map<String, Object> body) {
+        Long pacienteId = body.get("pacienteId") != null
+            ? Long.valueOf(body.get("pacienteId").toString())
+            : null;
+        if (pacienteId == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"pacienteId requerido\"}")
+                .build();
+        }
+
+        Paciente paciente;
+        try {
+            paciente = pacienteService.buscar(pacienteId);
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"Paciente no encontrado\"}")
+                .build();
+        }
+
+        if (paciente.email == null || paciente.email.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"El paciente no tiene email registrado\"}")
+                .build();
+        }
+
+        if (Usuario.findByEmail(paciente.email) != null) {
+            return Response.status(Response.Status.CONFLICT)
+                .entity("{\"error\":\"El paciente ya tiene un usuario registrado\"}")
+                .build();
+        }
+
+        String username = "P" + paciente.dni;
+        if (Usuario.findByUsername(username) != null) {
+            int suffix = 1;
+            while (Usuario.findByUsername(username + suffix) != null) {
+                suffix++;
+            }
+            username = username + suffix;
+        }
+
+        RegistroPendiente pendiente = RegistroPendiente.find("email", paciente.email).firstResult();
+
+        String codigo = codigoService.generarCodigo();
+        LocalDateTime expiracion = codigoService.calcularExpiracion();
+
+        if (pendiente == null) {
+            pendiente = new RegistroPendiente();
+            pendiente.email = paciente.email;
+            pendiente.creadoEn = LocalDateTime.now();
+        }
+
+        pendiente.nombres = paciente.nombres;
+        pendiente.apellidos = (paciente.apellidoPaterno != null ? paciente.apellidoPaterno : "")
+            + (paciente.apellidoMaterno != null ? " " + paciente.apellidoMaterno : "");
+        pendiente.dni = paciente.dni;
+        pendiente.telefono = paciente.telefono;
+        if (paciente.fechaNacimiento != null) {
+            pendiente.fechaNacimiento = paciente.fechaNacimiento;
+        }
+        pendiente.direccion = paciente.direccion;
+        pendiente.rolSolicitado = Rol.PACIENTE.name();
+        pendiente.username = username;
+        pendiente.usernameSugerido = username;
+        pendiente.codigoVerificacion = codigo;
+        pendiente.codigoExpiracion = expiracion;
+        pendiente.verificado = false;
+        pendiente.persist();
+
+        paciente.solicitaCuenta = true;
+        paciente.persist();
+
+        try {
+            String link = "http://localhost:3000/verificacion?email=" + paciente.email + "&username=" + username;
+            String emailBody = mapper.writeValueAsString(Map.of(
+                "to", paciente.email,
+                "codigo", codigo,
+                "username", username,
+                "link", link,
+                "nombres", paciente.nombres != null ? paciente.nombres : "",
+                "apellidos", pendiente.apellidos != null ? pendiente.apellidos : ""
+            ));
+            notificacionesClient.enviarCorreo(emailBody);
+        } catch (Exception e) {
+            // Email service error logged, user can request resend
+        }
+
+        return Response.ok(Map.of(
+            "mensaje", "Correo de registro enviado al paciente",
+            "username", username,
+            "email", paciente.email
+        )).build();
+    }
 
     @POST
     @Path("/pre-registro")

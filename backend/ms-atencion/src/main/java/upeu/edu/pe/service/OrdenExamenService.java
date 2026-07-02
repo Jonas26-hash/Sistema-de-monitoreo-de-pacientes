@@ -12,8 +12,12 @@ import java.util.List;
 @ApplicationScoped
 public class OrdenExamenService {
 
-    public List<OrdenExamen> listar() {
-        return OrdenExamen.listAll();
+    public List<OrdenExamen> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return OrdenExamen.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return OrdenExamen.list("LOWER(descripcion) LIKE ?1 OR LOWER(tipo) LIKE ?1", pattern);
     }
 
     public List<OrdenExamen> findByPaciente(Long pacienteId) {

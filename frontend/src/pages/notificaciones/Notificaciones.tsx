@@ -66,7 +66,7 @@ export default function Notificaciones() {
 
   const columns = [
     ...(!isPaciente ? [{
-      title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Notificacion) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>#{r.pacienteId}</Text>; }
+      title: 'Paciente', key: 'pacienteId', responsive: ['md'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: unknown, r: Notificacion) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space><UserOutlined style={{ color: '#00D4AA' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>#{r.pacienteId}</Text>; }
     }] : []),
     { title: 'Mensaje', dataIndex: 'mensaje', key: 'mensaje', ellipsis: true, render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     { title: 'Tipo', dataIndex: 'tipo', key: 'tipo', render: (v: string) => <Tag color={v === 'EMAIL' ? '#3B82F6' : '#8B5CF6'} style={{ borderRadius: 4 }}>{v}</Tag> },
@@ -74,7 +74,7 @@ export default function Notificaciones() {
       title: 'Estado', dataIndex: 'enviada', key: 'enviada',
       render: (v: boolean) => <Tag color={v ? '#00D4AA' : '#F59E0B'} style={{ borderRadius: 4 }}>{v ? 'Enviada' : 'Pendiente'}</Tag>,
     },
-    { title: 'Fecha', dataIndex: 'fechaEnvio', key: 'fechaEnvio', render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '-'}</Text> },
+    { title: 'Fecha', dataIndex: 'fechaEnvio', key: 'fechaEnvio', responsive: ['sm'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '-'}</Text> },
   ];
 
   return (
@@ -93,15 +93,15 @@ export default function Notificaciones() {
         </div>
         {!isPaciente && (
           <Space>
-            <SearchInput.Search placeholder="Buscar..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+            <SearchInput.Search placeholder="Buscar por destinatario o mensaje" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
             <Button type="primary" icon={<SendOutlined />} onClick={() => setModalOpen(true)}>Enviar Notificación</Button>
           </Space>
         )}
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={rows} rowKey="id" loading={isLoading}
-          pagination={{ current: page + 1, total, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={rows} rowKey="id" loading={isLoading} scroll={{ x: 500 }}
+          pagination={{ current: page + 1, total, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
       </div>
 
       {!isPaciente && (

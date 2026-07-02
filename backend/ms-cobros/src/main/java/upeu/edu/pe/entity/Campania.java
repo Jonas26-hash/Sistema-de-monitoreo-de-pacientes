@@ -20,14 +20,17 @@ public class Campania extends PanacheEntity {
     @Column(columnDefinition = "TEXT")
     public String descripcion;
 
+    @NotNull
     @Column(name = "descuento_porcentaje", nullable = false)
     @Min(0)
     @Max(100)
     public Integer descuentoPorcentaje;
 
+    @NotNull
     @Column(name = "fecha_inicio", nullable = false)
     public LocalDate fechaInicio;
 
+    @NotNull
     @Column(name = "fecha_fin", nullable = false)
     public LocalDate fechaFin;
 

@@ -20,8 +20,8 @@ public class TriajeResource {
 
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ENFERMERO", "ATENCION_CLIENTE"})
-    public List<Triaje> listar() {
-        return service.listar();
+    public List<Triaje> listar(@QueryParam("search") String search) {
+        return service.listar(search);
     }
 
     @GET

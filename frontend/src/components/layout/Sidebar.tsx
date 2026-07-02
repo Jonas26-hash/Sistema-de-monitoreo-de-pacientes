@@ -19,6 +19,7 @@ import {
   ExperimentOutlined,
   TagsOutlined,
   GiftOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -28,7 +29,9 @@ const { Sider } = Layout;
 const { Text } = Typography;
 
 const menuItems = [
-  { key: '/', icon: <DashboardOutlined />, label: 'Dashboard', roles: ['ADMIN', 'DOCTOR', 'ATENCION_CLIENTE', 'FARMACEUTICO', 'ENFERMERO', 'PACIENTE'] },
+  { key: '/', icon: <DashboardOutlined />, label: 'Dashboard', roles: ['ADMIN', 'DOCTOR', 'ATENCION_CLIENTE', 'FARMACEUTICO', 'ENFERMERO'] },
+  { key: '/portal', icon: <DashboardOutlined />, label: 'Mi Portal', roles: ['PACIENTE'] },
+  { key: '/reportes', icon: <WalletOutlined />, label: 'Mis Gastos', roles: ['PACIENTE'] },
   { key: '/usuarios', icon: <UserOutlined />, label: 'Usuarios', roles: ['ADMIN'] },
   { key: '/pacientes', icon: <TeamOutlined />, label: 'Pacientes', roles: ['ADMIN', 'DOCTOR', 'ATENCION_CLIENTE'] },
   { key: '/citas', icon: <CalendarOutlined />, label: 'Citas', roles: ['ADMIN', 'DOCTOR', 'ATENCION_CLIENTE', 'PACIENTE'] },
@@ -39,7 +42,7 @@ const menuItems = [
   { key: '/medicamentos', icon: <ShoppingCartOutlined />, label: 'Medicamentos', roles: ['ADMIN', 'FARMACEUTICO'] },
   { key: '/dispensaciones', icon: <MedicineBoxOutlined />, label: 'Dispensaciones', roles: ['ADMIN', 'FARMACEUTICO'] },
   { key: '/cobros', icon: <DollarOutlined />, label: 'Cobros', roles: ['ADMIN', 'ATENCION_CLIENTE'] },
-  { key: '/notificaciones', icon: <BellOutlined />, label: 'Notificaciones', roles: ['ADMIN', 'ATENCION_CLIENTE', 'PACIENTE'] },
+  { key: '/notificaciones', icon: <BellOutlined />, label: 'Notificaciones', roles: ['ADMIN', 'ATENCION_CLIENTE'] },
   { key: '/auditoria', icon: <AuditOutlined />, label: 'Auditoría', roles: ['ADMIN'] },
   { key: '/tarifario', icon: <TagsOutlined />, label: 'Tarifario', roles: ['ADMIN', 'ATENCION_CLIENTE'] },
   { key: '/campanias', icon: <GiftOutlined />, label: 'Campañas', roles: ['ADMIN', 'ATENCION_CLIENTE'] },

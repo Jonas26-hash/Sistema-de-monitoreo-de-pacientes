@@ -5,23 +5,7 @@ Login funcional, JWT asimétrico, disponibilidad de doctores en tiempo real, y f
 
 ## Arquitectura General
 
-```
-                   ┌──────────────────────┐
-                   │  Frontend (React)     │
-                   │  nginx - Puerto 3000  │
-                   └──────────┬───────────┘
-                              │
-                              ▼
-                   ┌──────────────────────┐
-                   │   API Gateway        │
-                   │    Puerto 8080       │
-                   └──────┬───────────────┘
-                          │
-        ┌─────┬──────┬────┼────┬─────┬──────┬──────┐
-        ▼     ▼      ▼    ▼    ▼     ▼      ▼      ▼
-      Config Registry Pacientes Atencion Recetas Farmacia Cobros Notificaciones
-      8888   8761     8081      8082     8083    8084     8085    8086
-```
+![Arquitectura General](Arquitectura.png)
 
 ## Microservicios
 

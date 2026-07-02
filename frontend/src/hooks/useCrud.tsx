@@ -14,9 +14,10 @@ interface CrudConfig<T> {
   canUpdate?: boolean;
   canDelete?: boolean;
   dateFields?: (keyof T)[];
+  dateTimeFields?: (keyof T)[];
 }
 
-function normalizeResponse<T>(payload: T[] | { content?: T[]; totalElements?: number; totalPages?: number }) {
+export function normalizeResponse<T>(payload: T[] | { content?: T[]; totalElements?: number; totalPages?: number }) {
   if (Array.isArray(payload)) {
     return {
       content: payload,
@@ -39,6 +40,7 @@ export function useCrud<T extends { id?: number }>({
   canUpdate = true,
   canDelete = true,
   dateFields = [],
+  dateTimeFields = [],
 }: CrudConfig<T>) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -66,8 +68,8 @@ export function useCrud<T extends { id?: number }>({
       setModalOpen(false);
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { mensaje?: string } } }).response?.data?.mensaje || 'Error al crear';
-      Modal.error({ title: 'Error', content: msg, centered: true });
+      const d = (err as { response?: { data?: { error?: string; mensaje?: string } } }).response?.data;
+      Modal.error({ title: 'Error', content: d?.mensaje || d?.error || 'Error al crear', centered: true });
     },
   });
 
@@ -82,8 +84,8 @@ export function useCrud<T extends { id?: number }>({
       setModalOpen(false);
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { mensaje?: string } } }).response?.data?.mensaje || 'Error al actualizar';
-      Modal.error({ title: 'Error', content: msg, centered: true });
+      const d = (err as { response?: { data?: { error?: string; mensaje?: string } } }).response?.data;
+      Modal.error({ title: 'Error', content: d?.mensaje || d?.error || 'Error al actualizar', centered: true });
     },
   });
 
@@ -97,8 +99,8 @@ export function useCrud<T extends { id?: number }>({
       showCrudSuccess('eliminado');
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { mensaje?: string } } }).response?.data?.mensaje || 'Error al eliminar';
-      Modal.error({ title: 'Error', content: msg, centered: true });
+      const d = (err as { response?: { data?: { error?: string; mensaje?: string } } }).response?.data;
+      Modal.error({ title: 'Error', content: d?.mensaje || d?.error || 'Error al eliminar', centered: true });
     },
   });
 
@@ -115,9 +117,15 @@ export function useCrud<T extends { id?: number }>({
         (converted as any)[field] = dayjs(val as string);
       }
     });
+    dateTimeFields.forEach((field) => {
+      const val = converted[field];
+      if (typeof val === 'string') {
+        (converted as any)[field] = dayjs(val as string);
+      }
+    });
     setEditing(converted);
     setModalOpen(true);
-  }, [dateFields]);
+  }, [dateFields, dateTimeFields]);
 
   const closeModal = useCallback(() => {
     setModalOpen(false);
@@ -128,8 +136,14 @@ export function useCrud<T extends { id?: number }>({
     const prepared = { ...values };
     dateFields.forEach((field) => {
       const val = (prepared as any)[field];
-      if (val && typeof val.toISOString === 'function') {
-        (prepared as any)[field] = val.toISOString();
+      if (val && typeof val.format === 'function') {
+        (prepared as any)[field] = val.format('YYYY-MM-DD');
+      }
+    });
+    dateTimeFields.forEach((field) => {
+      const val = (prepared as any)[field];
+      if (val && typeof val.format === 'function') {
+        (prepared as any)[field] = val.format('YYYY-MM-DDTHH:mm:ss');
       }
     });
     if (editing?.id) {
@@ -137,7 +151,7 @@ export function useCrud<T extends { id?: number }>({
     } else {
       createMutation.mutate(prepared);
     }
-  }, [editing, createMutation, updateMutation, dateFields]);
+  }, [editing, createMutation, updateMutation, dateFields, dateTimeFields]);
 
   const handleDelete = useCallback((id: number) => {
     Modal.confirm({

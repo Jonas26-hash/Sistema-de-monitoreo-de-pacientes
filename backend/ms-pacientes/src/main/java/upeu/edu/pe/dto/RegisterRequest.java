@@ -36,4 +36,6 @@ public class RegisterRequest {
     public String direccion;
 
     public String genero;
+
+    public String avatar;
 }

@@ -20,8 +20,8 @@ public class OrdenExamenResource {
 
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "ENFERMERO"})
-    public List<OrdenExamen> listar() {
-        return service.listar();
+    public List<OrdenExamen> listar(@QueryParam("search") String search) {
+        return service.listar(search);
     }
 
     @GET
@@ -40,7 +40,6 @@ public class OrdenExamenResource {
 
     @GET
     @Path("/pendientes/paciente/{pacienteId}")
-    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     public List<OrdenExamen> pendientesByPaciente(@PathParam("pacienteId") Long pacienteId) {
         return service.pendientesByPaciente(pacienteId);
     }

@@ -42,4 +42,7 @@ public class Receta extends PanacheEntity {
 
     @Column(name = "fecha_dispensacion")
     public LocalDate fechaDispensacion;
+
+    @Column
+    public Double costo;
 }

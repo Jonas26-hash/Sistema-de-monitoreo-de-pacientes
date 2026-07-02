@@ -119,11 +119,11 @@ public class AuditLogFilter implements ContainerRequestFilter, ContainerResponse
                         .build();
                     HTTP.send(req, HttpResponse.BodyHandlers.discarding());
                 } catch (Exception e) {
-                    log.fine("Error enviando auditoría: " + e.getMessage());
+                    log.warning("Error enviando auditoría: " + e.getMessage());
                 }
             });
         } catch (Exception e) {
-            log.fine("Error serializando auditoría: " + e.getMessage());
+            log.warning("Error serializando auditoría: " + e.getMessage());
         }
     }
 }

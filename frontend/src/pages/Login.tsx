@@ -34,8 +34,8 @@ export default function Login() {
         navigate(from, { replace: true });
       }, 2000);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { mensaje?: string; message?: string } } })?.response?.data;
-      message.error(msg?.mensaje || msg?.message || 'Credenciales inválidas');
+      const msg = (err as { response?: { data?: { error?: string; mensaje?: string; message?: string } } })?.response?.data;
+      message.error(msg?.mensaje || msg?.message || msg?.error || 'Credenciales inválidas');
     } finally {
       setLoading(false);
     }

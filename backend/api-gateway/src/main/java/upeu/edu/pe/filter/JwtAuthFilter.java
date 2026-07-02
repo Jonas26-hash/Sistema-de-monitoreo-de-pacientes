@@ -6,9 +6,11 @@ import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
+import java.io.ByteArrayInputStream;
 import java.security.Principal;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -23,6 +25,7 @@ public class JwtAuthFilter implements ContainerRequestFilter {
     private static final Set<String> PUBLIC_PATHS = Set.of(
         "/",
         "/auth/login",
+        "/auth/debug/echo",
         "/auth/pre-registro",
         "/auth/verificar-codigo",
         "/auth/completar-registro",
@@ -41,6 +44,20 @@ public class JwtAuthFilter implements ContainerRequestFilter {
     public void filter(ContainerRequestContext requestContext) {
         String method = requestContext.getMethod();
         String path = requestContext.getUriInfo().getPath();
+
+        // Capture raw body for all requests before RESTEasy Reactive consumes it
+        if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)) {
+            try {
+                var is = requestContext.getEntityStream();
+                if (is != null) {
+                    byte[] raw = is.readAllBytes();
+                    requestContext.setProperty("rawBody", raw);
+                    requestContext.setEntityStream(new ByteArrayInputStream(raw));
+                }
+            } catch (Exception e) {
+                // body not available yet, skip
+            }
+        }
 
         if ("OPTIONS".equalsIgnoreCase(method) || isPublicPath(path)) {
             return;

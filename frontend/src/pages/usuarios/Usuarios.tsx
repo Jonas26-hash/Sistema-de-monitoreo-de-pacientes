@@ -179,13 +179,13 @@ export default function Usuarios() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar usuarios..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por DNI, nombre o usuario" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nuevo Usuario</Button>
         </Space>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading}
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
           pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
       </div>
 

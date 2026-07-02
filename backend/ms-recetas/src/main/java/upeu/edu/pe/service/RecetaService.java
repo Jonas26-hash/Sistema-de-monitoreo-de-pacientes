@@ -10,8 +10,12 @@ import java.util.List;
 @ApplicationScoped
 public class RecetaService {
 
-    public List<Receta> listar() {
-        return Receta.listAll();
+    public List<Receta> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Receta.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Receta.list("LOWER(medicamentos) LIKE ?1 OR LOWER(indicaciones) LIKE ?1", pattern);
     }
 
     public List<Receta> pendientes() {
@@ -47,6 +51,7 @@ public class RecetaService {
         r.dispensada = data.dispensada;
         r.fechaDispensacion = data.fechaDispensacion;
         r.pagado = data.pagado;
+        r.costo = data.costo;
         return r;
     }
 

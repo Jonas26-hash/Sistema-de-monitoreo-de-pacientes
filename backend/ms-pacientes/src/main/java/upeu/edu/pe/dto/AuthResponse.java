@@ -5,4 +5,5 @@ public class AuthResponse {
     public String username;
     public String email;
     public String[] roles;
+    public String avatar;
 }

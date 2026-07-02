@@ -23,6 +23,17 @@ public class GlobalExceptionMapper {
     @ServerExceptionMapper
     public Response handleException(Exception e) {
         log.error("Unhandled exception", e);
+        if (e instanceof jakarta.ws.rs.WebApplicationException wae) {
+            Response original = wae.getResponse();
+            String msg = e.getMessage() != null ? e.getMessage() : "Error";
+            try {
+                String json = mapper.writeValueAsString(Map.of("error", msg, "mensaje", msg, "code", original.getStatus()));
+                return Response.fromResponse(original).type(MediaType.APPLICATION_JSON).entity(json).build();
+            } catch (JsonProcessingException ex) {
+                return Response.fromResponse(original).type(MediaType.APPLICATION_JSON)
+                    .entity("{\"error\":\"" + msg + "\",\"mensaje\":\"" + msg + "\",\"code\":" + original.getStatus() + "}").build();
+            }
+        }
         try {
             String json = mapper.writeValueAsString(Map.of(
                 "error", "Error interno del servidor",

@@ -21,7 +21,9 @@ export async function register(data: {
 export function decodeToken(token: string): { sub: string; roles: string[]; email?: string; nombres?: string; apellidos?: string } | null {
   try {
     const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload));
+    const bytes = atob(payload);
+    const utf8 = new TextDecoder('utf-8').decode(new Uint8Array(bytes.split('').map(c => c.charCodeAt(0))));
+    const decoded = JSON.parse(utf8);
     const rawRoles = decoded.groups ?? decoded.roles ?? [];
     const roles = Array.isArray(rawRoles)
       ? rawRoles

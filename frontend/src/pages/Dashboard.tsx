@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Row, Col, Card, Typography, Table, Tag, Space, List, Badge } from 'antd';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { Row, Col, Card, Typography, Table, Tag, Space } from 'antd';
 import {
   TeamOutlined,
   CalendarOutlined,
@@ -10,10 +10,8 @@ import {
   UserOutlined,
   DashboardOutlined,
   ThunderboltOutlined,
-  ClockCircleOutlined,
   FileTextOutlined,
   CreditCardOutlined,
-  RightOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../services/api';
@@ -23,58 +21,17 @@ import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
-const COLORS = ['#00D4AA', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6'];
-
-const barData = [
-  { mes: 'Ene', citas: 45, consultas: 38 },
-  { mes: 'Feb', citas: 52, consultas: 42 },
-  { mes: 'Mar', citas: 48, consultas: 40 },
-  { mes: 'Abr', citas: 61, consultas: 53 },
-  { mes: 'May', citas: 55, consultas: 47 },
-  { mes: 'Jun', citas: 67, consultas: 58 },
-];
-
-const pieData = [
-  { name: 'Programadas', value: 35 },
-  { name: 'Confirmadas', value: 25 },
-  { name: 'En Curso', value: 15 },
-  { name: 'Completadas', value: 20 },
-  { name: 'Canceladas', value: 5 },
-];
+const COLORS = ['#00D4AA', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6', '#14D6B0'];
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ pacientes: 0, citasHoy: 0, recetas: 0, ingresos: 0 });
+  const [stats, setStats] = useState({ pacientes: 0, citasHoy: 0, consultasHoy: 0, recetas: 0, ingresos: 0, pendientes: 0 });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
-  const [patientData, setPatientData] = useState<{
-    pacienteId: number | null; citas: any[]; recetas: any[]; deudas: any[]; examenes: any[];
-  }>({ pacienteId: null, citas: [], recetas: [], deudas: [], examenes: [] });
-
+  const [barData, setBarData] = useState<{ mes: string; citas: number; consultas: number }[]>([]);
+  const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
   const isPaciente = user?.roles?.includes('PACIENTE');
-
-  useEffect(() => {
-    if (!isPaciente) return;
-    api.get('/auth/profile').then((res) => {
-      const pid = res.data.pacienteId;
-      if (!pid) return;
-      Promise.all([
-        api.get(`/citas/paciente/${pid}`).catch(() => ({ data: [] })),
-        api.get(`/recetas/paciente/${pid}`).catch(() => ({ data: [] })),
-        api.get(`/cobros/deudas/${pid}`).catch(() => ({ data: [] })),
-        api.get(`/ordenes-examen/paciente/${pid}`).catch(() => ({ data: [] })),
-      ]).then(([citas, recetas, deudas, examenes]) => {
-        setPatientData({
-          pacienteId: pid,
-          citas: Array.isArray(citas.data) ? citas.data : [],
-          recetas: Array.isArray(recetas.data) ? recetas.data : [],
-          deudas: Array.isArray(deudas.data) ? deudas.data : [],
-          examenes: Array.isArray(examenes.data) ? examenes.data : [],
-        });
-      });
-    }).catch(() => {});
-  }, [isPaciente]);
 
   function friendlyAction(accion: string, recurso: string): string {
     const patterns: [RegExp, string][] = [
@@ -104,19 +61,72 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().slice(0, 10);
+
+    const extractArray = (d: any) => {
+      if (Array.isArray(d)) return d;
+      if (d?.value && Array.isArray(d.value)) return d.value;
+      if (d?.content && Array.isArray(d.content)) return d.content;
+      return [];
+    };
+
     Promise.all([
-      api.get('/pacientes?size=1').catch(() => ({ data: { totalElements: 0 } })),
-      api.get('/citas?size=1').catch(() => ({ data: { totalElements: 0 } })),
-      api.get('/recetas?size=1').catch(() => ({ data: { totalElements: 0 } })),
-      api.get('/cobros?size=1').catch(() => ({ data: { totalElements: 0 } })),
+      api.get('/pacientes').catch(() => ({ data: [] })),
+      api.get('/citas').catch(() => ({ data: [] })),
+      api.get('/consultas').catch(() => ({ data: [] })),
+      api.get('/recetas').catch(() => ({ data: [] })),
+      api.get('/cobros').catch(() => ({ data: [] })),
       api.get(`/audit?size=10&username=${user?.username || ''}`).catch(() => ({ data: { content: [] } })),
-    ]).then(([p, c, r, co, auditRes]) => {
+    ]).then(([p, citas, consultas, r, co, auditRes]) => {
+      const allCitas = extractArray(citas.data);
+      const allConsultas = extractArray(consultas.data);
+      const allCobros = extractArray(co.data);
+
+      const citasHoy = allCitas.filter((c: any) => c.fechaHora?.startsWith?.(hoyStr)).length;
+      const consultasHoy = allConsultas.filter((c: any) => c.fechaConsulta?.startsWith?.(hoyStr)).length;
+      const ingresos = allCobros
+        .filter((c: any) => c.estado === 'PAGADO')
+        .reduce((s: number, c: any) => s + (c.monto || 0), 0);
+      const pendientes = allCobros
+        .filter((c: any) => c.estado === 'PENDIENTE')
+        .reduce((s: number, c: any) => s + (c.monto || 0), 0);
+
+      const allRecetas = extractArray(r.data);
       setStats({
-        pacientes: p.data.totalElements || 0,
-        citasHoy: c.data.totalElements || 0,
-        recetas: r.data.totalElements || 0,
-        ingresos: co.data.totalElements || 0,
+        pacientes: extractArray(p.data).length,
+        citasHoy, consultasHoy,
+        recetas: allRecetas.length,
+        ingresos, pendientes,
       });
+
+      const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+      const monthly: Record<number, { citas: number; consultas: number }> = {};
+      allCitas.forEach((c: any) => {
+        if (c.fechaHora) {
+          const m = new Date(c.fechaHora).getMonth();
+          if (!monthly[m]) monthly[m] = { citas: 0, consultas: 0 };
+          monthly[m].citas++;
+        }
+      });
+      allConsultas.forEach((c: any) => {
+        if (c.fechaConsulta) {
+          const m = new Date(c.fechaConsulta).getMonth();
+          if (!monthly[m]) monthly[m] = { citas: 0, consultas: 0 };
+          monthly[m].consultas++;
+        }
+      });
+      const bar = Object.entries(monthly)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([m, v]) => ({ mes: meses[Number(m)], ...v }));
+      setBarData(bar.length ? bar : []);
+
+      const estados = ['PROGRAMADA','CONFIRMADA','EN_CURSO','COMPLETADA','CANCELADA'];
+      const estadoCount = estados.map(name => ({
+        name,
+        value: allCitas.filter((c: any) => c.estado === name).length,
+      }));
+      setPieData(estadoCount.filter(e => e.value > 0));
 
       const auditRecords = auditRes.data?.items || auditRes.data?.content || [];
       const activity = auditRecords.map((log: any, i: number) => ({
@@ -145,135 +155,7 @@ export default function Dashboard() {
   }
 
   if (isPaciente) {
-    const upcoming = patientData.citas.filter((c: any) => new Date(c.fechaHora) > new Date());
-    return (
-      <div>
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(20,214,176,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#14D6B0' }}>
-            <UserOutlined />
-          </div>
-          <div>
-            <Title level={3} style={{ color: 'var(--text-primary)', margin: 0, fontWeight: 700 }}>Mi Panel</Title>
-            <Text style={{ color: 'var(--text-muted)', fontSize: 14 }}>Bienvenido, {user?.username}</Text>
-          </div>
-        </div>
-
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <Card className="glass" style={{ borderRadius: 16 }}
-              title={<Space><CalendarOutlined style={{ color: '#3B82F6' }} /><Text strong>Próximas Citas</Text></Space>}>
-              {patientData.citas.length === 0 ? (
-                <Text style={{ color: 'var(--text-muted)' }}>No tienes citas programadas</Text>
-              ) : (
-                <List itemLayout="horizontal" split={false} dataSource={upcoming.slice(0, 5)}
-                  renderItem={(item: any) => (
-                    <List.Item style={{ padding: '10px 0' }}>
-                      <List.Item.Meta
-                        avatar={<Badge status={new Date(item.fechaHora) > new Date() ? 'processing' : 'default'} />}
-                        title={<Text style={{ color: 'var(--text-primary)' }}>{item.motivo || 'Cita médica'}</Text>}
-                        description={<Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>{dayjs(item.fechaHora).format('DD/MM/YYYY h:mm A')} {item.doctorNombre ? `— Dr. ${item.doctorNombre}` : ''}</Text>}
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
-            </Card>
-          </Col>
-        </Row>
-
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <Card className="glass" style={{ borderRadius: 16 }}
-              title={<Space><FileTextOutlined style={{ color: '#8B5CF6' }} /><Text strong>Mis Exámenes</Text></Space>}>
-              {patientData.examenes.length === 0 ? (
-                <Text style={{ color: 'var(--text-muted)' }}>No tienes exámenes registrados</Text>
-              ) : (
-                <List itemLayout="horizontal" split={false} dataSource={patientData.examenes.slice(0, 5)}
-                  renderItem={(item: any) => (
-                    <List.Item style={{ padding: '8px 0' }}>
-                      <List.Item.Meta
-                        avatar={<Badge status={item.estado === 'COMPLETADO' ? 'success' : 'processing'} />}
-                        title={<Text style={{ color: 'var(--text-primary)', fontSize: 14 }}>{item.tipo === 'LABORATORIO' ? '📋 ' : item.tipo === 'IMAGENES' ? '🔬 ' : '📄 '}{item.descripcion || item.tipo}</Text>}
-                        description={
-                          <Space>
-                            <Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>{dayjs(item.fechaOrden).format('DD/MM/YYYY')}</Text>
-                            {item.estado === 'COMPLETADO' && item.resultado ? (
-                              <Text style={{ color: '#10B981', fontSize: 12 }}>Resultado: {item.resultado.substring(0, 60)}</Text>
-                            ) : (
-                              <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Pendiente</Tag>
-                            )}
-                          </Space>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
-            </Card>
-          </Col>
-        </Row>
-
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12}>
-            <Card className="glass" style={{ borderRadius: 16 }}
-              title={<Space><MedicineBoxOutlined style={{ color: '#F59E0B' }} /><Text strong>Mis Recetas</Text></Space>}>
-              {patientData.recetas.length === 0 ? (
-                <Text style={{ color: 'var(--text-muted)' }}>Sin recetas activas</Text>
-              ) : (
-                <List itemLayout="horizontal" split={false} dataSource={patientData.recetas.slice(0, 5)}
-                  renderItem={(item: any) => (
-                    <List.Item style={{ padding: '8px 0' }}>
-                      <List.Item.Meta
-                        title={<Text style={{ color: 'var(--text-primary)', fontSize: 14 }}>{item.descripcion || `Receta #${item.id}`}</Text>}
-                        description={<Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>{dayjs(item.fechaCreacion).format('DD/MM/YYYY')}</Text>}
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
-            </Card>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Card className="glass" style={{ borderRadius: 16 }}
-              title={<Space><CreditCardOutlined style={{ color: '#EF4444' }} /><Text strong>Pagos Pendientes</Text></Space>}>
-              {patientData.deudas.length === 0 ? (
-                <Text style={{ color: 'var(--text-muted)' }}>No tienes deudas pendientes</Text>
-              ) : (
-                <List itemLayout="horizontal" split={false} dataSource={patientData.deudas.slice(0, 5)}
-                  renderItem={(item: any) => (
-                    <List.Item style={{ padding: '8px 0' }}>
-                      <List.Item.Meta
-                        title={<Text style={{ color: 'var(--text-primary)', fontSize: 14 }}>{item.descripcion || `Deuda #${item.id}`}</Text>}
-                        description={<Text style={{ color: '#EF4444', fontWeight: 600 }}>S/{item.monto || item.montoPendiente || 0}</Text>}
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
-            </Card>
-          </Col>
-        </Row>
-
-        {recentActivity.length > 0 && (
-          <Row style={{ marginTop: 24 }}>
-            <Col span={24}>
-              <Card className="glass" style={{ borderRadius: 16 }}
-                title={<Space align="center"><span className="live-pulse-dot" /><Text strong>Actividad Reciente</Text></Space>}>
-                <Table dataSource={recentActivity} pagination={false} showHeader={false}
-                  locale={{ emptyText: 'Sin actividad reciente' }}
-                  columns={[
-                    { dataIndex: 'action', key: 'action', render: (v, r) => (
-                      <Space><Tag color="green" style={{ borderRadius: 4, fontSize: 11 }}>{r.user}</Tag><Text style={{ color: 'var(--text-primary)', fontSize: 13 }}>{v}</Text></Space>
-                    )},
-                    { dataIndex: 'time', key: 'time', width: 80, render: (v) => <Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</Text> },
-                  ]}
-                />
-              </Card>
-            </Col>
-          </Row>
-        )}
-      </div>
-    );
+    return <Navigate to="/portal" replace />;
   }
 
   return (
@@ -294,10 +176,12 @@ export default function Dashboard() {
         {[
           { title: 'Pacientes Registrados', value: stats.pacientes, icon: <TeamOutlined />, color: '#00D4AA', bg: 'rgba(0,212,170,0.1)' },
           { title: 'Citas Hoy', value: stats.citasHoy, icon: <CalendarOutlined />, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
-          { title: 'Recetas Activas', value: stats.recetas, icon: <MedicineBoxOutlined />, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-          { title: 'Ingresos del Mes', value: `$${stats.ingresos}`, icon: <DollarOutlined />, color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)' },
+          { title: 'Consultas Hoy', value: stats.consultasHoy, icon: <FileTextOutlined />, color: '#14D6B0', bg: 'rgba(20,214,176,0.1)' },
+          { title: 'Recetas Emitidas', value: stats.recetas, icon: <MedicineBoxOutlined />, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+          { title: 'Ingresos Cobrados', value: `S/${stats.ingresos.toFixed(2)}`, icon: <DollarOutlined />, color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
+          { title: 'Pendientes de Pago', value: `S/${stats.pendientes.toFixed(2)}`, icon: <CreditCardOutlined />, color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
         ].map((card, i) => (
-          <Col xs={24} sm={12} lg={6} key={i}>
+          <Col xs={12} sm={8} lg={4} key={i}>
             <Card className="stat-card glass" style={{ borderRadius: 16, animationDelay: `${i * 0.1}s`, opacity: 0, animation: `slideUp 0.5s ease-out ${i * 0.1}s forwards` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{
@@ -321,7 +205,7 @@ export default function Dashboard() {
         <Col xs={24} lg={16}>
           <Card className="glass" style={{ borderRadius: 16 }} title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Citas & Consultas Mensuales</Text>}>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData} barGap={8}>
+              <BarChart data={barData.length ? barData : [{ mes: 'Sin datos', citas: 0, consultas: 0 }]} barGap={8}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="mes" stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
                 <YAxis stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
@@ -339,8 +223,8 @@ export default function Dashboard() {
           <Card className="glass" style={{ borderRadius: 16 }} title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Estado de Citas</Text>}>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
-                  {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={pieData.length ? pieData : [{ name: 'Sin datos', value: 1 }]} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
+                  {pieData.length ? pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />) : <Cell fill="#eee" />}
                 </Pie>
                 <Tooltip
                   contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-primary)' }}
@@ -351,7 +235,7 @@ export default function Dashboard() {
               {pieData.map((item, i) => (
                 <Space key={i} size={6}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: COLORS[i] }} />
-                  <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{item.name}</Text>
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{item.name} ({item.value})</Text>
                 </Space>
               ))}
             </div>

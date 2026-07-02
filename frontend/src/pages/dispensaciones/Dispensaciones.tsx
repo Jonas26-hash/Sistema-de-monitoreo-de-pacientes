@@ -140,20 +140,20 @@ export default function Dispensaciones() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { setModalOpen(true); setSelectedRecetaId(null); setSelectedPacienteId(null); }}>Nueva Dispensación</Button>
         </Space>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={isLoading}
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={isLoading} scroll={{ x: 650 }}
           pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Nueva Dispensación</Text>}
         open={modalOpen} onCancel={() => { setModalOpen(false); setSelectedRecetaId(null); setSelectedPacienteId(null); }} onOk={() => form.submit()} okText="Dispensar" width={640} destroyOnClose
         styles={{ body: { padding: '24px 28px' } }}>
-        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate({ ...v, fechaDispensacion: v.fechaDispensacion?.toISOString?.() ?? v.fechaDispensacion })} preserve={false}
+        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate({ ...v, fechaDispensacion: v.fechaDispensacion?.format?.('YYYY-MM-DD') ?? v.fechaDispensacion })} preserve={false}
           style={{ width: '100%' }}>
           <Form.Item label="Paciente" required>
             <PacienteSearchByDni pacientes={pacientes || []} onSelect={handlePatientSelect} value={selectedPacienteId} onChange={(v) => setSelectedPacienteId(v)} />

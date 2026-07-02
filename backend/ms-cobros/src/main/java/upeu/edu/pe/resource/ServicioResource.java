@@ -38,7 +38,6 @@ public class ServicioResource {
 
     @GET
     @Path("/tipo/{tipo}")
-    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public List<Servicio> porTipo(@PathParam("tipo") String tipo) {
         return service.porTipo(tipo);
     }

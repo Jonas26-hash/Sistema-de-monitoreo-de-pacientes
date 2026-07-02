@@ -30,8 +30,8 @@ public class NotificacionResource {
 
     @GET
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
-    public List<Notificacion> listar() {
-        return notificacionService.listar();
+    public List<Notificacion> listar(@QueryParam("search") String search) {
+        return notificacionService.listar(search);
     }
 
     @GET
@@ -48,12 +48,20 @@ public class NotificacionResource {
             .entity(notificacionService.crear(notificacion)).build();
     }
 
+    @PUT
+    @Path("/{id}/leer")
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "PACIENTE"})
+    public Response marcarLeida(@PathParam("id") Long id) {
+        notificacionService.marcarLeida(id);
+        return Response.ok().build();
+    }
+
     @POST
     @Path("/enviar-correo")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response enviarCorreo(@Valid CorreoRequest request) {
         try {
-            emailService.enviarCodigoVerificacion(request.to, request.codigo, request.username, request.nombres, request.apellidos, request.esStaff);
+            emailService.enviarCodigoVerificacion(request.to, request.codigo, request.username, request.nombres, request.apellidos, request.esStaff, request.link);
             return Response.ok("{\"mensaje\":\"Correo enviado exitosamente\"}").build();
         } catch (Exception e) {
             log.error("Error enviando correo de verificacion", e);

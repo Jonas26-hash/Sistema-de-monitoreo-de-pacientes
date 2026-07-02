@@ -119,8 +119,8 @@ export default function Tarifario() {
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nuevo Servicio</Button>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
-        <Table columns={columns} dataSource={data || []} rowKey="id" loading={isLoading} pagination={false} />
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+        <Table columns={columns} dataSource={data || []} rowKey="id" loading={isLoading} scroll={{ x: 650 }} pagination={false} />
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Servicio' : 'Nuevo Servicio'}</Text>}

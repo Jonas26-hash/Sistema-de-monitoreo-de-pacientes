@@ -70,6 +70,7 @@ public class AuthService {
         response.roles = usuario.roles != null
             ? usuario.roles.stream().map(Rol::name).toArray(String[]::new)
             : new String[0];
+        response.avatar = usuario.avatar;
 
         return response;
     }
@@ -189,13 +190,24 @@ public class AuthService {
         return r;
     }
 
-    public Map<String, Object> listarUsuarios(int page, int size) {
-        List<UsuarioResponse> content = Usuario.findAll()
-            .page(Page.of(page, size))
-            .list().stream()
+    public Map<String, Object> listarUsuarios(int page, int size, String search) {
+        List<Usuario> usuarios;
+        long total;
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.toLowerCase() + "%";
+            usuarios = Usuario.find("LOWER(nombres) LIKE ?1 OR LOWER(apellidos) LIKE ?1 OR dni LIKE ?1", pattern)
+                .page(Page.of(page, size))
+                .list();
+            total = Usuario.count("LOWER(nombres) LIKE ?1 OR LOWER(apellidos) LIKE ?1 OR dni LIKE ?1", pattern);
+        } else {
+            usuarios = Usuario.findAll()
+                .page(Page.of(page, size))
+                .list();
+            total = Usuario.count();
+        }
+        List<UsuarioResponse> content = usuarios.stream()
             .map(u -> toResponse((Usuario) u))
             .collect(Collectors.toList());
-        long total = Usuario.count();
         Map<String, Object> result = new HashMap<>();
         result.put("content", content);
         result.put("totalElements", total);
@@ -238,6 +250,9 @@ public class AuthService {
         if (request.roles != null) {
             usuario.roles = request.roles;
         }
+        if (request.avatar != null) {
+            usuario.avatar = request.avatar.isEmpty() ? null : request.avatar;
+        }
 
         return toResponse(usuario);
     }
@@ -253,6 +268,9 @@ public class AuthService {
         if (request.dni != null) usuario.dni = request.dni;
         if (request.telefono != null) usuario.telefono = request.telefono;
         if (request.especialidad != null) usuario.especialidad = request.especialidad;
+        if (request.avatar != null) {
+            usuario.avatar = request.avatar.isEmpty() ? null : request.avatar;
+        }
 
         if (usuario.paciente != null) {
             if (request.fechaNacimiento != null) {
@@ -304,6 +322,7 @@ public class AuthService {
         usuario.activo = true;
     }
 
+    @Transactional
     public SistemaConfig getConfig() {
         return SistemaConfig.ensureExists();
     }
@@ -333,6 +352,7 @@ public class AuthService {
         r.dni = usuario.dni;
         r.telefono = usuario.telefono;
         r.activo = usuario.activo;
+        r.avatar = usuario.avatar;
         if (usuario.paciente != null) {
             r.pacienteId = usuario.paciente.id;
             if (usuario.paciente.fechaNacimiento != null) {

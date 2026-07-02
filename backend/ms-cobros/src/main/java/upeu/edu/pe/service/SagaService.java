@@ -8,8 +8,10 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import upeu.edu.pe.entity.Cobro;
 import upeu.edu.pe.entity.EventOutbox;
+import upeu.edu.pe.entity.Servicio;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -61,6 +63,38 @@ public class SagaService {
 
         } catch (Exception e) {
             throw new RuntimeException("Error processing CITA_CREADA payload", e);
+        }
+    }
+
+    @Transactional
+    public String procesarConsultaCreada(String payload) {
+        try {
+            JsonNode node = mapper.readTree(payload);
+            long citaId = node.has("citaId") ? node.get("citaId").asLong() : 0;
+
+            if (citaId > 0) {
+                long existing = Cobro.count("referenciaId = ?1 AND tipo = 'CONSULTA'", citaId);
+                if (existing > 0) return "OK";
+            }
+
+            double precio = 50.0;
+            List<Servicio> servicios = Servicio.list("tipo = ?1 AND activo = true", "CONSULTA");
+            if (!servicios.isEmpty()) {
+                precio = servicios.get(0).precio;
+            }
+
+            Cobro cobro = new Cobro();
+            cobro.pacienteId = node.has("pacienteId") ? node.get("pacienteId").asLong() : null;
+            cobro.tipo = "CONSULTA";
+            cobro.referenciaId = citaId > 0 ? citaId : (node.has("consultaId") ? node.get("consultaId").asLong() : null);
+            cobro.monto = precio;
+            cobro.estado = "PENDIENTE";
+            cobro.fechaCobro = LocalDate.now();
+            cobro.descripcion = "Consulta m\u00e9dica";
+            cobro.persist();
+            return "OK";
+        } catch (Exception e) {
+            throw new RuntimeException("Error processing CONSULTA_CREADA payload", e);
         }
     }
 

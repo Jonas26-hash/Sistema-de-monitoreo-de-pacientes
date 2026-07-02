@@ -6,12 +6,17 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import io.quarkus.runtime.StartupEvent;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.mindrot.jbcrypt.BCrypt;
 import upeu.edu.pe.entity.Rol;
 import upeu.edu.pe.entity.Usuario;
 
 @ApplicationScoped
 public class DataSeeder {
+
+    @Inject
+    @ConfigProperty(name = "quarkus.datasource.db-kind", defaultValue = "postgresql")
+    String dbKind;
 
     void migrarCajeros() {
         EntityManager em = Usuario.getEntityManager();
@@ -28,7 +33,9 @@ public class DataSeeder {
 
     @Transactional
     void onStart(@Observes StartupEvent ev) {
-        migrarCajeros();
+        if (!"h2".equals(dbKind)) {
+            migrarCajeros();
+        }
 
         if (Usuario.count() > 0) return;
 

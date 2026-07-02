@@ -16,4 +16,5 @@ public class UsuarioResponse {
     public String fechaNacimiento;
     public String genero;
     public String direccion;
+    public String avatar;
 }

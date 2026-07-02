@@ -30,4 +30,14 @@ public class Notificacion extends PanacheEntity {
 
     @Column
     public String canal;
+
+    @Column
+    public Boolean leida = false;
+
+    @Column(name = "remitente_id")
+    public Long remitenteId;
+
+    public String remitenteTipo;
+
+    public String remitenteNombre;
 }

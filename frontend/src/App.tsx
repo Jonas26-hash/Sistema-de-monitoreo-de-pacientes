@@ -24,6 +24,9 @@ const Perfil = lazy(() => import('./pages/perfil/Perfil'));
 const Configuracion = lazy(() => import('./pages/configuracion/Configuracion'));
 const Tarifario = lazy(() => import('./pages/tarifario/Tarifario'));
 const Campanias = lazy(() => import('./pages/campanias/Campanias'));
+const Historial = lazy(() => import('./pages/historial/Historial'));
+const Portal = lazy(() => import('./pages/Portal'));
+const Reportes = lazy(() => import('./pages/reportes/Reportes'));
 const Verificacion = lazy(() => import('./pages/verificacion/Verificacion'));
 const NotFound404 = lazy(() => import('./pages/NotFound404'));
 const Offline = lazy(() => import('./pages/Offline'));
@@ -45,8 +48,10 @@ export default function App() {
           }
         >
           <Route path="/" element={<Dashboard />} />
+          <Route path="/portal" element={<ProtectedRoute roles={['PACIENTE']}><Portal /></ProtectedRoute>} />
+          <Route path="/reportes" element={<ProtectedRoute roles={['PACIENTE']}><Reportes /></ProtectedRoute>} />
           <Route path="/usuarios" element={<ProtectedRoute roles={['ADMIN']}><Usuarios /></ProtectedRoute>} />
-          <Route path="/pacientes" element={<ProtectedRoute roles={['ADMIN','ATENCION_CLIENTE']}><Pacientes /></ProtectedRoute>} />
+          <Route path="/pacientes" element={<ProtectedRoute roles={['ADMIN','DOCTOR','ATENCION_CLIENTE']}><Pacientes /></ProtectedRoute>} />
           <Route path="/citas" element={<Citas />} />
           <Route path="/triaje" element={<ProtectedRoute roles={['ADMIN','ENFERMERO']}><Triaje /></ProtectedRoute>} />
           <Route path="/consultas" element={<ProtectedRoute roles={['ADMIN','DOCTOR']}><Consultas /></ProtectedRoute>} />
@@ -61,6 +66,7 @@ export default function App() {
           <Route path="/configuracion" element={<ProtectedRoute roles={['ADMIN']}><Configuracion /></ProtectedRoute>} />
           <Route path="/tarifario" element={<ProtectedRoute roles={['ADMIN','ATENCION_CLIENTE']}><Tarifario /></ProtectedRoute>} />
           <Route path="/campanias" element={<ProtectedRoute roles={['ADMIN','ATENCION_CLIENTE']}><Campanias /></ProtectedRoute>} />
+          <Route path="/historial/paciente/:pacienteId" element={<ProtectedRoute roles={['ADMIN','DOCTOR','ATENCION_CLIENTE','PACIENTE']}><Historial /></ProtectedRoute>} />
         </Route>
         <Route path="*" element={<NotFound404 />} />
       </Routes>

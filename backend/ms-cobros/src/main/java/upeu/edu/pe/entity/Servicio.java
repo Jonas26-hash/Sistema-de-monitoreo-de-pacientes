@@ -20,6 +20,7 @@ public class Servicio extends PanacheEntity {
     @NotBlank
     public String tipo;
 
+    @NotNull
     @Column(nullable = false)
     @DecimalMin("0.00")
     public Double precio;

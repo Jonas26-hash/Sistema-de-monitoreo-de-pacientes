@@ -19,7 +19,6 @@ public class Cita extends PanacheEntity {
 
     @Column(name = "fecha_hora", nullable = false)
     @NotNull(message = "La fecha y hora son obligatorias")
-    @Future(message = "La cita debe programarse en una fecha futura")
     public LocalDateTime fechaHora;
 
     @Column(nullable = false)

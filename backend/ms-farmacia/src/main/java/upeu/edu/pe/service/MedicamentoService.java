@@ -9,8 +9,12 @@ import java.util.List;
 @ApplicationScoped
 public class MedicamentoService {
 
-    public List<Medicamento> listar() {
-        return Medicamento.listAll();
+    public List<Medicamento> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Medicamento.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Medicamento.list("LOWER(nombre) LIKE ?1 OR LOWER(codigo) LIKE ?1", pattern);
     }
 
     public Medicamento buscar(Long id) {

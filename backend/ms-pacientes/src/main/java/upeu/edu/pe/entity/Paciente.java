@@ -67,6 +67,9 @@ public class Paciente extends PanacheEntity {
     @Column
     public LocalDate vigenciaSeguro;
 
+    @Column(name = "solicita_cuenta")
+    public Boolean solicitaCuenta;
+
     @Column
     public Boolean activo = true;
 }

@@ -22,8 +22,8 @@ export default function Auditoria() {
       if (username) params.username = username;
       if (accion) params.accion = accion;
       if (dateRange) {
-        params.fechaInicio = dateRange[0];
-        params.fechaFin = dateRange[1];
+        params.desde = dateRange[0];
+        params.hasta = dateRange[1];
       }
       const res = await api.get('/audit', { params });
       return res.data;
@@ -79,7 +79,7 @@ export default function Auditoria() {
               style={{ width: '100%', background: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
               onChange={(dates) => {
                 if (dates && dates[0] && dates[1]) {
-                  setDateRange([dates[0].toISOString(), dates[1].toISOString()]);
+                  setDateRange([dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]);
                 } else {
                   setDateRange(null);
                 }
@@ -90,13 +90,14 @@ export default function Auditoria() {
         </Row>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
+      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
         <Table
           columns={columns}
-          dataSource={data?.content || []}
+          dataSource={data?.items || []}
           rowKey="id"
           loading={isLoading}
-          pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }}
+          scroll={{ x: 650 }}
+          pagination={{ current: page + 1, total: data?.total || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }}
         />
       </div>
     </div>

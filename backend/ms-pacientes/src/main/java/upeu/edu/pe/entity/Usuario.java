@@ -2,6 +2,8 @@ package upeu.edu.pe.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import upeu.edu.pe.entity.Paciente;
 
@@ -12,12 +14,15 @@ import upeu.edu.pe.entity.Paciente;
 })
 public class Usuario extends PanacheEntity {
 
+    @NotBlank
     @Column(nullable = false, unique = true)
     public String username;
 
+    @NotBlank
     @Column(nullable = false)
     public String password;
 
+    @NotBlank
     @Column(nullable = false, unique = true)
     public String email;
 
@@ -48,6 +53,9 @@ public class Usuario extends PanacheEntity {
 
     @Column
     public String telefono;
+
+    @Column(columnDefinition = "TEXT")
+    public String avatar;
 
     public static Usuario findByUsername(String username) {
         return find("username", username).firstResult();

@@ -6,8 +6,8 @@ COPY src src
 COPY .mvn .mvn
 RUN mvn package -DskipTests
 
-# Stage 2: Run
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.24
+# Stage 2: Run (uses same cached image to avoid redhat registry dependency)
+FROM maven:3.9-eclipse-temurin-21
 WORKDIR /app
 COPY --from=builder /app/target/quarkus-app/lib/ /deployments/lib/
 COPY --from=builder /app/target/quarkus-app/*.jar /deployments/
@@ -18,4 +18,4 @@ ENV QUARKUS_HTTP_HOST=0.0.0.0
 ENV QUARKUS_HTTP_PORT=8081
 ENV JAVA_OPTS_APPEND="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
-ENTRYPOINT [ "/opt/jboss/container/java/run/run-java.sh" ]
+ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]

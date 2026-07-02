@@ -20,8 +20,8 @@ public class RecetaResource {
 
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public List<Receta> listar() {
-        return service.listar();
+    public List<Receta> listar(@QueryParam("search") String search) {
+        return service.listar(search);
     }
 
     @GET
@@ -95,7 +95,6 @@ public class RecetaResource {
 
     @GET
     @Path("/pendientes-pago/paciente/{pacienteId}")
-    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public List<Receta> pendientesPagoByPaciente(@PathParam("pacienteId") Long pacienteId) {
         return service.pendientesPagoByPaciente(pacienteId);
     }

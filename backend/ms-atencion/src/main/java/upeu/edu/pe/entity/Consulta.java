@@ -2,6 +2,7 @@ package upeu.edu.pe.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -9,6 +10,7 @@ import java.util.List;
 @Table(name = "consultas")
 public class Consulta extends PanacheEntity {
 
+    @NotNull
     @Column(name = "paciente_id", nullable = false)
     public Long pacienteId;
 
@@ -18,6 +20,7 @@ public class Consulta extends PanacheEntity {
     @Column(name = "doctor_id")
     public Long doctorId;
 
+    @NotNull
     @Column(name = "fecha_consulta", nullable = false)
     public LocalDateTime fechaConsulta;
 

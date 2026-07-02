@@ -15,14 +15,24 @@ public class EmailService {
     Mailer mailer;
 
     public void enviarCodigoVerificacion(String to, String codigo, String username, String nombres, String apellidos) {
-        enviarCodigoVerificacion(to, codigo, username, nombres, apellidos, false);
+        enviarCodigoVerificacion(to, codigo, username, nombres, apellidos, false, null);
     }
 
     public void enviarCodigoVerificacion(String to, String codigo, String username, String nombres, String apellidos, boolean esStaff) {
+        enviarCodigoVerificacion(to, codigo, username, nombres, apellidos, esStaff, null);
+    }
+
+    public void enviarCodigoVerificacion(String to, String codigo, String username, String nombres, String apellidos, boolean esStaff, String link) {
         String nombreCompleto = (nombres != null && apellidos != null) ? nombres + " " + apellidos : "";
-        String usuarioLinea = (username != null)
+        String usuarioLinea = (username != null && !username.isEmpty())
             ? "<p>Tu nombre de usuario sugerido es: <strong>" + username + "</strong></p>"
-            + "<p>Puedes cambiarlo si lo deseas al ingresar al link.</p>"
+            + "<p>Puedes cambiarlo si lo deseas al ingresar al sistema.</p>"
+            : "";
+
+        String linkLinea = (link != null && !link.isEmpty())
+            ? "<div style='text-align:center;margin:20px 0'>"
+            + "<a href='" + link + "' style='display:inline-block;background:#059669;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px'>Completar mi registro</a>"
+            + "</div>"
             : "";
 
         String staffLinea = esStaff
@@ -46,6 +56,7 @@ public class EmailService {
             + "<div class='code'>" + codigo + "</div>"
             + "<p>Este código expira en 10 minutos.</p>"
             + usuarioLinea
+            + linkLinea
             + staffLinea
             + "<p class='footer'>Si no solicitaste este registro, ignora este mensaje.</p>"
             + "</div></body></html>";

@@ -3,6 +3,7 @@ package upeu.edu.pe.worker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import upeu.edu.pe.dto.SagaEvent;
 import upeu.edu.pe.entity.EventOutbox;
@@ -20,9 +21,14 @@ public class EventOutboxProcessor {
     @Inject
     ObjectMapper mapper;
 
+    @Inject
+    EntityManager em;
+
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void processEvent(EventOutbox event, HttpClient client) {
         try {
+            event = em.merge(event);
+
             SagaEvent sagaEvent = new SagaEvent();
             sagaEvent.eventId = event.eventId;
             sagaEvent.eventType = event.eventType;
@@ -54,6 +60,5 @@ public class EventOutboxProcessor {
                 event.status = "FAILED";
             }
         }
-        event.persist();
     }
 }

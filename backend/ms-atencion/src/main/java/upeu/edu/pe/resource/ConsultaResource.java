@@ -20,8 +20,8 @@ public class ConsultaResource {
 
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public List<Consulta> listar() {
-        return service.listar();
+    public List<Consulta> listar(@QueryParam("search") String search) {
+        return service.listar(search);
     }
 
     @GET

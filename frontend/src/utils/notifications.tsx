@@ -1,6 +1,6 @@
 import { Modal } from 'antd';
 
-type ActionType = 'creado' | 'creada' | 'actualizado' | 'actualizada' | 'eliminado' | 'eliminada' | 'completada' | 'procesado';
+type ActionType = 'creado' | 'creada' | 'actualizado' | 'actualizada' | 'eliminado' | 'eliminada' | 'completada' | 'cancelada' | 'procesado';
 
 export function showCrudSuccess(tipo: ActionType, recurso: string = 'Registro') {
   const svgMap = {
@@ -11,6 +11,7 @@ export function showCrudSuccess(tipo: ActionType, recurso: string = 'Registro') 
     eliminado: '/lottie/Untitled file.svg',
     eliminada: '/lottie/Untitled file.svg',
     completada: '/lottie/Untitled file.svg',
+    cancelada: '/lottie/Untitled file.svg',
     procesado: '/lottie/Registro.svg',
   };
   const titleMap = {
@@ -21,6 +22,7 @@ export function showCrudSuccess(tipo: ActionType, recurso: string = 'Registro') 
     eliminado: `${recurso} eliminado exitosamente`,
     eliminada: `${recurso} eliminada exitosamente`,
     completada: `${recurso} completada exitosamente`,
+    cancelada: `${recurso} cancelada exitosamente`,
     procesado: `${recurso} procesado exitosamente`,
   };
 

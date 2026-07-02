@@ -9,8 +9,12 @@ import java.util.List;
 @ApplicationScoped
 public class PacienteService {
 
-    public List<Paciente> listar() {
-        return Paciente.list("activo", true);
+    public List<Paciente> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Paciente.list("activo", true);
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Paciente.list("activo = true AND (LOWER(nombres) LIKE ?1 OR LOWER(apellidoPaterno) LIKE ?1 OR LOWER(dni) LIKE ?1)", pattern);
     }
 
     public Paciente buscar(Long id) {
@@ -27,6 +31,27 @@ public class PacienteService {
 
     @Transactional
     public Paciente crear(Paciente data) {
+        Paciente existente = Paciente.find("dni = ?1 and activo = false", data.dni).firstResult();
+        if (existente != null) {
+            existente.activo = true;
+            existente.nombres = data.nombres;
+            existente.apellidoPaterno = data.apellidoPaterno;
+            existente.apellidoMaterno = data.apellidoMaterno;
+            existente.fechaNacimiento = data.fechaNacimiento;
+            existente.genero = data.genero;
+            existente.direccion = data.direccion;
+            existente.telefono = data.telefono;
+            existente.email = data.email;
+            existente.antecedentesFamiliares = data.antecedentesFamiliares;
+            existente.alergias = data.alergias;
+            existente.condiciones = data.condiciones;
+            existente.medicamentosActual = data.medicamentosActual;
+            existente.nombreSeguro = data.nombreSeguro;
+            existente.numeroPoliza = data.numeroPoliza;
+            existente.vigenciaSeguro = data.vigenciaSeguro;
+            existente.solicitaCuenta = data.solicitaCuenta;
+            return existente;
+        }
         data.activo = true;
         data.persist();
         return data;
@@ -50,12 +75,19 @@ public class PacienteService {
         p.nombreSeguro = data.nombreSeguro;
         p.numeroPoliza = data.numeroPoliza;
         p.vigenciaSeguro = data.vigenciaSeguro;
+        p.solicitaCuenta = data.solicitaCuenta;
         return p;
     }
 
     @Transactional
     public void eliminar(Long id) {
+        Paciente.deleteById(id);
+    }
+
+    @Transactional
+    public Paciente actualizarSolicitaCuenta(Long id, Boolean solicitaCuenta) {
         Paciente p = buscar(id);
-        p.activo = false;
+        p.solicitaCuenta = solicitaCuenta;
+        return p;
     }
 }

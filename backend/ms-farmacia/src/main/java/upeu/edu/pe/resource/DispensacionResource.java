@@ -20,8 +20,8 @@ public class DispensacionResource {
 
     @GET
     @RolesAllowed({"ADMIN", "FARMACEUTICO"})
-    public List<Dispensacion> listar() {
-        return service.listar();
+    public List<Dispensacion> listar(@QueryParam("search") String search) {
+        return service.listar(search);
     }
 
     @GET

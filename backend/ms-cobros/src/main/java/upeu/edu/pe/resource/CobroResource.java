@@ -20,13 +20,13 @@ public class CobroResource {
 
     @GET
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
-    public List<Cobro> listar() {
-        return service.listar();
+    public List<Cobro> listar(@QueryParam("search") String search) {
+        return service.listar(search);
     }
 
     @GET
     @Path("/paciente/{pacienteId}")
-    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "PACIENTE"})
     public List<Cobro> findByPaciente(@PathParam("pacienteId") Long pacienteId) {
         return service.findByPaciente(pacienteId);
     }
@@ -52,18 +52,25 @@ public class CobroResource {
 
     @GET
     @Path("/deudas/{pacienteId}")
-    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "PACIENTE"})
     public Response deudasPaciente(@PathParam("pacienteId") Long pacienteId) {
         return Response.ok(service.deudasPaciente(pacienteId)).build();
     }
 
+    @GET
+    @Path("/pendientes-agrupados")
+    public List<Cobro> pendientesAgrupados() {
+        return Cobro.list("estado = 'PENDIENTE' ORDER BY pacienteId");
+    }
+
     @POST
     @Path("/pago-unico")
-    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
-    public Response pagoUnico(String body) {
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "PACIENTE"})
+    public Response pagoUnico(byte[] bodyBytes) {
         try {
+            String bodyStr = new String(bodyBytes, java.nio.charset.StandardCharsets.UTF_8);
             return Response.status(Response.Status.CREATED)
-                .entity(service.pagoUnico(body)).build();
+                .entity(service.pagoUnico(bodyStr)).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                 .entity("{\"error\":\"" + e.getMessage() + "\"}").build();

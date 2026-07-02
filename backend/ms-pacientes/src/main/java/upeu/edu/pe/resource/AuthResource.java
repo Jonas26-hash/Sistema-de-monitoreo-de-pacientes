@@ -111,10 +111,11 @@ public class AuthResource {
 
     @GET
     @Path("/usuarios")
-    @RolesAllowed("ADMIN")
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
     public Response listarUsuarios(@QueryParam("page") @DefaultValue("0") int page,
-                                    @QueryParam("size") @DefaultValue("10") int size) {
-        return Response.ok(authService.listarUsuarios(page, size)).build();
+                                    @QueryParam("size") @DefaultValue("10") int size,
+                                    @QueryParam("search") String search) {
+        return Response.ok(authService.listarUsuarios(page, size, search)).build();
     }
 
     @GET
@@ -132,7 +133,7 @@ public class AuthResource {
 
     @GET
     @Path("/usuarios/rol/{rol}")
-    @RolesAllowed("ADMIN")
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "DOCTOR", "ENFERMERO", "PACIENTE"})
     public Response listarPorRol(@PathParam("rol") String rol) {
         try {
             return Response.ok(authService.listarPorRol(rol)).build();

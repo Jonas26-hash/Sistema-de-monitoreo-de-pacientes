@@ -11,8 +11,10 @@ import upeu.edu.pe.entity.Cita;
 import upeu.edu.pe.entity.IdempotencyRecord;
 import upeu.edu.pe.service.CitaService;
 import upeu.edu.pe.service.IdempotencyService;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("/citas")
 @Produces(MediaType.APPLICATION_JSON)
@@ -27,8 +29,8 @@ public class CitaResource {
 
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
-    public List<Cita> listar() {
-        return citaService.listar();
+    public List<Cita> listar(@QueryParam("search") String search) {
+        return citaService.listar(search);
     }
 
     @GET
@@ -72,7 +74,13 @@ public class CitaResource {
             }
         }
 
-        Cita result = citaService.crear(cita, idempotencyKey);
+        Cita result;
+        try {
+            result = citaService.crear(cita, idempotencyKey);
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        }
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             try {
@@ -89,12 +97,46 @@ public class CitaResource {
             .build();
     }
 
+    @GET
+    @Path("/proximas")
+    public List<Cita> proximas() {
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime maniana = ahora.plusHours(24);
+        return Cita.list("fechaHora >= ?1 AND fechaHora < ?2 AND estado IN ('PROGRAMADA', 'CONFIRMADA')", ahora, maniana);
+    }
+
+    @PUT
+    @Path("/{id}")
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "PACIENTE"})
+    @Transactional
+    public Response actualizar(@PathParam("id") Long id, @Valid Cita citaActualizada) {
+        try {
+            Cita cita = citaService.buscar(id);
+            cita.pacienteId = citaActualizada.pacienteId;
+            cita.doctorId = citaActualizada.doctorId;
+            cita.fechaHora = citaActualizada.fechaHora;
+            cita.estado = citaActualizada.estado;
+            cita.observaciones = citaActualizada.observaciones;
+            cita.motivo = citaActualizada.motivo;
+            cita.precio = citaActualizada.precio;
+            cita.persist();
+            return Response.ok(cita).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        }
+    }
+
     @POST
     @Path("/por-dni")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
     @Transactional
-    public Response crearPorDni(Map<String, Object> body, @HeaderParam("Idempotency-Key") String idempotencyKey) {
+    public Response crearPorDni(byte[] bodyBytes, @HeaderParam("Idempotency-Key") String idempotencyKey) {
         try {
+            String bodyStr = new String(bodyBytes, java.nio.charset.StandardCharsets.UTF_8);
+            ObjectMapper localMapper = new ObjectMapper();
+            Map<String, Object> body = localMapper.readValue(bodyStr, Map.class);
+
             if (idempotencyKey != null && !idempotencyKey.isBlank()) {
                 IdempotencyRecord existing = idempotencyService.findExisting(idempotencyKey);
                 if (existing != null) {
@@ -126,6 +168,9 @@ public class CitaResource {
                 .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         } catch (jakarta.ws.rs.NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
     }

@@ -31,8 +31,12 @@ public class CitaService {
     @ConfigProperty(name = "saga.cobros.url", defaultValue = "http://ms-cobros:8080/eventos/saga")
     String cobrosSagaUrl;
 
-    public List<Cita> listar() {
-        return Cita.listAll();
+    public List<Cita> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Cita.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Cita.list("LOWER(motivo) LIKE ?1 OR LOWER(observaciones) LIKE ?1", pattern);
     }
 
     public List<Cita> findByPaciente(Long pacienteId) {
@@ -61,11 +65,14 @@ public class CitaService {
 
     @Transactional
     public Cita crear(Cita cita, String idempotencyKey) {
+        if (cita.fechaHora != null && cita.fechaHora.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("La cita debe programarse en una fecha futura");
+        }
         if (cita.estado == null || cita.estado.isBlank()) {
             cita.estado = "PENDIENTE";
         }
-        if (cita.precio == null) {
-            cita.precio = 0.0;
+        if (cita.precio == null || cita.precio == 0.0) {
+            cita.precio = obtenerPrecioConsulta();
         }
         cita.persist();
         crearOutbox(cita);
@@ -96,13 +103,30 @@ public class CitaService {
         Object doctorIdObj = body.get("doctorId");
         cita.doctorId = doctorIdObj != null ? ((Number) doctorIdObj).longValue() : null;
         cita.fechaHora = LocalDateTime.parse((String) body.get("fechaHora"));
+        if (cita.fechaHora.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("La cita debe programarse en una fecha futura");
+        }
         cita.motivo = (String) body.get("motivo");
         cita.observaciones = (String) body.get("observaciones");
         cita.estado = "PROGRAMADA";
-        cita.precio = 0.0;
+        cita.precio = obtenerPrecioConsulta();
         cita.persist();
         crearOutbox(cita);
         return cita;
+    }
+
+    private double obtenerPrecioConsulta() {
+        try (Client client = ClientBuilder.newClient()) {
+            String json = client.target("http://ms-cobros:8080")
+                .path("servicios/tipo/CONSULTA")
+                .request(MediaType.APPLICATION_JSON)
+                .get(String.class);
+            JsonNode servicios = mapper.readTree(json);
+            if (servicios.isArray() && servicios.size() > 0) {
+                return servicios.get(0).get("precio").asDouble();
+            }
+        } catch (Exception ignored) {}
+        return 50.0;
     }
 
     private void crearOutbox(Cita cita) {

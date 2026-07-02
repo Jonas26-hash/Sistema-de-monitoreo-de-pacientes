@@ -10,8 +10,12 @@ import java.util.List;
 @ApplicationScoped
 public class TriajeService {
 
-    public List<Triaje> listar() {
-        return Triaje.listAll();
+    public List<Triaje> listar(String search) {
+        if (search == null || search.isBlank()) {
+            return Triaje.listAll();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return Triaje.list("LOWER(motivoConsulta) LIKE ?1 OR LOWER(observaciones) LIKE ?1", pattern);
     }
 
     public List<Triaje> findByPaciente(Long pacienteId) {
