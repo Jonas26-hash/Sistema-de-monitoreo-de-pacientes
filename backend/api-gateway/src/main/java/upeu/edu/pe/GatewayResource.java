@@ -101,11 +101,10 @@ public class GatewayResource {
 
     @POST
     @Path("/auth/login")
+    @Consumes(MediaType.WILDCARD)
     @Retry(maxRetries = 2, delay = 200)
     @Fallback(fallbackMethod = "fallbackGenerico")
-    public Response proxyLogin(@HeaderParam("Authorization") String authHeader) {
-        Object prop = requestContext.getProperty("rawBody");
-        byte[] body = prop instanceof byte[] ? (byte[]) prop : new byte[0];
+    public Response proxyLogin(byte[] body, @HeaderParam("Authorization") String authHeader) {
         gwLog.info("PROXY_LOGIN body {} bytes: {}", body.length,
             new String(body, 0, Math.min(body.length, 80), StandardCharsets.UTF_8));
         return handleResponse(buildPost(url("ms-pacientes"), "auth/login", body, authHeader));

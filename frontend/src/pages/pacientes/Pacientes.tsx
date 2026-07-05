@@ -8,6 +8,7 @@ import { useCrud } from '../../hooks/useCrud';
 import api from '../../services/api';
 import { showCrudSuccess } from '../../utils/notifications';
 import { useAuth } from '../../context/AuthContext';
+import ErrorAlert from '../../components/common/ErrorAlert';
 import type { Paciente, User, Cobro } from '../../types';
 import dayjs from 'dayjs';
 
@@ -133,7 +134,7 @@ export default function Pacientes() {
     setDetailOpen(true);
   };
 
-  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave: crudHandleSave, handleDelete } = useCrud<Paciente>({
+  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave: crudHandleSave, handleDelete, isError: pacientesError } = useCrud<Paciente>({
     key: 'pacientes',
     endpoint: '/pacientes',
     dateFields: ['fechaNacimiento', 'vigenciaSeguro'],
@@ -242,8 +243,16 @@ export default function Pacientes() {
       </div>
 
       <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 550 }}
-          pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+        {pacientesError ? (
+          <ErrorAlert
+            message="No se pudieron cargar los pacientes"
+            description="El servicio de pacientes no está disponible. Por favor intenta más tarde."
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ['pacientes'] })}
+          />
+        ) : (
+          <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 550 }}
+            pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+        )}
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Detalle del Paciente</Text>}

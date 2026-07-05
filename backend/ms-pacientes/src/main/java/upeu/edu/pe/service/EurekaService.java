@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import io.quarkus.runtime.Startup;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @ApplicationScoped
+@Startup
 public class EurekaService {
 
     private static final Logger log = Logger.getLogger(EurekaService.class.getName());
@@ -61,13 +63,24 @@ public class EurekaService {
         log.info("EurekaService iniciado — " + appName + " -> " + eurekaUrl);
     }
 
+    private String getIpAddress() {
+        try {
+            var addr = java.net.InetAddress.getLocalHost();
+            return addr.getHostAddress();
+        } catch (Exception e) {
+            return "127.0.0.1";
+        }
+    }
+
     void register() {
         try {
-            instanceId = appName + ":" + port;
+            instanceId = hostName + ":" + port;
+            String ipAddr = getIpAddress();
             String body = MAPPER.writeValueAsString(Map.of("instance", Map.of(
                 "instanceId", instanceId,
                 "app", appName.toUpperCase(),
                 "hostName", hostName,
+                "ipAddr", ipAddr,
                 "port", Map.of("$", port, "@enabled", "true"),
                 "securePort", Map.of("$", 443, "@enabled", "false"),
                 "statusPageUrl", "http://" + hostName + ":" + port + "/q/health",

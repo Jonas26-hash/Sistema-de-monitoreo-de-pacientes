@@ -15,6 +15,7 @@ export default function Login() {
   const [forgotStep, setForgotStep] = useState(0);
   const [forgotEmail, setForgotEmail] = useState('');
   const [fpLoading, setFpLoading] = useState(false);
+  const [forgotUsername, setForgotUsername] = useState('');
   const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -41,13 +42,14 @@ export default function Login() {
     }
   };
 
-  const handleSendCode = async (values: { email: string }) => {
+  const handleSendCode = async (values: { username: string; email: string }) => {
     setFpLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: values.email });
+      await api.post('/auth/forgot-password', { username: values.username, email: values.email });
+      setForgotUsername(values.username);
       setForgotEmail(values.email);
       setForgotStep(1);
-      message.success('Código enviado si el email está registrado');
+      message.success('Código enviado si los datos coinciden');
     } catch {
       message.error('Error al enviar código');
     } finally {
@@ -246,7 +248,7 @@ export default function Login() {
                     Recuperar Contraseña
                   </Title>
                   <Text style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                    {forgotStep === 0 ? 'Ingresa tu email para recibir un código' : 'Ingresa el código y tu nueva contraseña'}
+                    {forgotStep === 0 ? 'Ingresa tu usuario y email para recibir un código' : 'Ingresa el código y tu nueva contraseña'}
                   </Text>
                 </div>
 
@@ -255,7 +257,7 @@ export default function Login() {
                   size="small"
                   style={{ marginBottom: 24 }}
                   items={[
-                    { title: 'Email', icon: <MailOutlined /> },
+                    { title: 'Validar', icon: <UserOutlined /> },
                     { title: 'Código', icon: <SafetyOutlined /> },
                     { title: 'Listo', icon: <LockOutlined /> },
                   ]}
@@ -263,6 +265,17 @@ export default function Login() {
 
                 {forgotStep === 0 ? (
                   <Form layout="vertical" onFinish={handleSendCode} size="large" requiredMark={false}>
+                    <Form.Item
+                      name="username"
+                      label={<span style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>Usuario</span>}
+                      rules={[{ required: true, message: 'Ingresa tu usuario' }]}
+                    >
+                      <Input
+                        prefix={<UserOutlined style={{ color: 'var(--text-muted)', marginRight: 8 }} />}
+                        placeholder="Ingrese su usuario"
+                        style={{ height: 48, borderRadius: 10, background: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                      />
+                    </Form.Item>
                     <Form.Item
                       name="email"
                       label={<span style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>Email</span>}

@@ -6,13 +6,19 @@ import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
 import java.io.ByteArrayInputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.Principal;
+import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import io.smallrye.jwt.auth.principal.JWTParser;
 
@@ -37,6 +43,24 @@ public class JwtAuthFilter implements ContainerRequestFilter {
         "/auth/reset-password"
     );
 
+    private static final long CACHE_TTL_MS = 30_000;
+    private static final ConcurrentHashMap<Long, CachedStatus> statusCache = new ConcurrentHashMap<>();
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(2))
+        .build();
+
+    private static class CachedStatus {
+        boolean activo;
+        long timestamp;
+        CachedStatus(boolean activo) {
+            this.activo = activo;
+            this.timestamp = System.currentTimeMillis();
+        }
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > CACHE_TTL_MS;
+        }
+    }
+
     @Inject
     JWTParser jwtParser;
 
@@ -45,7 +69,6 @@ public class JwtAuthFilter implements ContainerRequestFilter {
         String method = requestContext.getMethod();
         String path = requestContext.getUriInfo().getPath();
 
-        // Capture raw body for all requests before RESTEasy Reactive consumes it
         if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)) {
             try {
                 var is = requestContext.getEntityStream();
@@ -55,7 +78,6 @@ public class JwtAuthFilter implements ContainerRequestFilter {
                     requestContext.setEntityStream(new ByteArrayInputStream(raw));
                 }
             } catch (Exception e) {
-                // body not available yet, skip
             }
         }
 
@@ -98,6 +120,32 @@ public class JwtAuthFilter implements ContainerRequestFilter {
                     return "Bearer";
                 }
             });
+
+            Object userIdClaim = jwt.getClaim("userId");
+            Long userId = userIdClaim != null ? Long.valueOf(userIdClaim.toString()) : null;
+
+            if (userId != null) {
+                CachedStatus cached = statusCache.get(userId);
+                if (cached == null || cached.isExpired()) {
+                    boolean activo = checkUserActive(userId);
+                    statusCache.put(userId, new CachedStatus(activo));
+                    if (!activo) {
+                        requestContext.abortWith(
+                            Response.status(Response.Status.FORBIDDEN)
+                                .type("application/json")
+                                .entity("{\"error\":\"cuenta desactivada\",\"mensaje\":\"Tu cuenta ha sido desactivada. Contacta al administrador.\"}")
+                                .build()
+                        );
+                    }
+                } else if (!cached.activo) {
+                    requestContext.abortWith(
+                        Response.status(Response.Status.FORBIDDEN)
+                            .type("application/json")
+                            .entity("{\"error\":\"cuenta desactivada\",\"mensaje\":\"Tu cuenta ha sido desactivada. Contacta al administrador.\"}")
+                            .build()
+                    );
+                }
+            }
         } catch (Exception e) {
             log.warning("JWT validation failed for path: " + path);
             requestContext.abortWith(
@@ -106,6 +154,21 @@ public class JwtAuthFilter implements ContainerRequestFilter {
                     .entity("{\"error\":\"Token invalido o expirado\"}")
                     .build()
             );
+        }
+    }
+
+    private boolean checkUserActive(Long userId) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create("http://ms-pacientes:8080/auth/check-status/" + userId))
+                .timeout(Duration.ofSeconds(2))
+                .GET()
+                .build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            return resp.statusCode() == 200 && resp.body().contains("\"activo\":true");
+        } catch (Exception e) {
+            log.warning("Failed to check user status for " + userId + ": " + e.getMessage());
+            return true;
         }
     }
 

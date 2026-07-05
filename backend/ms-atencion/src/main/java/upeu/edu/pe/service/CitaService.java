@@ -36,6 +36,20 @@ public class CitaService {
             return Cita.listAll();
         }
         String pattern = "%" + search.trim().toLowerCase() + "%";
+        String trimmed = search.trim();
+        if (trimmed.matches("\\d{8}")) {
+            try (Client c = ClientBuilder.newClient()) {
+                String json = c.target("http://ms-pacientes:8080")
+                    .path("pacientes/dni/" + trimmed)
+                    .request(MediaType.APPLICATION_JSON)
+                    .get(String.class);
+                JsonNode paciente = mapper.readTree(json);
+                Long pid = paciente.get("id").asLong();
+                return Cita.list("(LOWER(motivo) LIKE ?1 OR LOWER(observaciones) LIKE ?1) OR pacienteId = ?2", pattern, pid);
+            } catch (Exception e) {
+                // DNI not found, fall through
+            }
+        }
         return Cita.list("LOWER(motivo) LIKE ?1 OR LOWER(observaciones) LIKE ?1", pattern);
     }
 

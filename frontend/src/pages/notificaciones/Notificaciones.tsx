@@ -59,6 +59,7 @@ export default function Notificaciones() {
   const handlePatientSelect = (p: Paciente) => {
     setSelectedPacienteId(p.id);
     form.setFieldValue('pacienteId', p.id);
+    form.setFieldValue('destinatario', p.email || '');
   };
 
   const rows = Array.isArray(data) ? data : (data?.content || []);
@@ -122,11 +123,11 @@ export default function Notificaciones() {
                 </Select>
               </Form.Item>
             </div>
+            <Form.Item name="destinatario" label="Email del paciente" style={{ width: '100%' }}>
+              <Input disabled placeholder="Se auto-completa al seleccionar paciente" />
+            </Form.Item>
             <Form.Item name="mensaje" label="Mensaje" rules={[{ required: true }]}>
               <Input.TextArea rows={4} placeholder="Contenido del mensaje" />
-            </Form.Item>
-            <Form.Item name="canal" label="Canal">
-              <Input placeholder="WhatsApp / Telegram / etc" style={{ width: '100%' }} />
             </Form.Item>
           </Form>
         </Modal>

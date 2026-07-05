@@ -27,6 +27,20 @@ public class CobroService {
             return Cobro.listAll();
         }
         String pattern = "%" + search.trim().toLowerCase() + "%";
+        String trimmed = search.trim();
+        if (trimmed.matches("\\d{8}")) {
+            try {
+                String json = client.target("http://ms-pacientes:8080")
+                    .path("pacientes/dni/" + trimmed)
+                    .request(MediaType.APPLICATION_JSON)
+                    .get(String.class);
+                JsonNode paciente = mapper.readTree(json);
+                Long pid = paciente.get("id").asLong();
+                return Cobro.list("(LOWER(descripcion) LIKE ?1 OR LOWER(tipo) LIKE ?1) OR pacienteId = ?2", pattern, pid);
+            } catch (Exception e) {
+                // DNI not found, fall through
+            }
+        }
         return Cobro.list("LOWER(descripcion) LIKE ?1 OR LOWER(tipo) LIKE ?1", pattern);
     }
 

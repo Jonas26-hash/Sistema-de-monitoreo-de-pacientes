@@ -174,6 +174,7 @@ export interface Notificacion {
   remitenteId?: number;
   remitenteTipo?: string;
   remitenteNombre?: string;
+  destinatario?: string;
 }
 
 export interface HistorialEntry {

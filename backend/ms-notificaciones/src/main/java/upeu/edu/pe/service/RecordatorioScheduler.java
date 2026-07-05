@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
@@ -23,6 +24,7 @@ public class RecordatorioScheduler {
     ObjectMapper mapper;
 
     @Scheduled(every = "30m")
+    @Transactional
     public void verificarRecordatorios() {
         try { recordatorioCitas(); } catch (Exception e) { System.err.println("[Scheduler] Error citas: " + e.getMessage()); }
         try { recordatorioDeudas(); } catch (Exception e) { System.err.println("[Scheduler] Error deudas: " + e.getMessage()); }
@@ -105,7 +107,9 @@ public class RecordatorioScheduler {
             String mensaje = "Estimado paciente,\n\n"
                 + "Usted tiene " + count + " comprobante(s) pendiente(s) de pago por un total de S/ "
                 + String.format("%.2f", totalMonto) + ".\n\n"
-                + "Por favor, acérquese a nuestra clínica para realizar el pago.\n\n"
+                + "Puede realizar el pago de las siguientes maneras:\n"
+                + "1. Acercarse a nuestra clínica y pagar en ventanilla.\n"
+                + "2. Pagar desde el sistema mediante Yape QR, ingresando a su portal de paciente.\n\n"
                 + "Saludos,\nSistema de Monitoreo de Pacientes";
             emailService.enviarNotificacion(email, asunto, mensaje);
 

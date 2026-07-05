@@ -124,7 +124,7 @@ export default function Triajes() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por motivo..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nuevo Triaje</Button>
         </Space>
       </div>

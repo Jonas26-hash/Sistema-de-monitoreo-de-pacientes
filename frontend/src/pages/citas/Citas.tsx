@@ -8,6 +8,7 @@ import { showCrudSuccess } from '../../utils/notifications';
 import api from '../../services/api';
 import type { Cita, Paciente, User } from '../../types';
 import PacienteSearchByDni from '../../components/paciente/PacienteSearchByDni';
+import ErrorAlert from '../../components/common/ErrorAlert';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -38,7 +39,7 @@ export default function Citas() {
     enabled: isPaciente,
   });
 
-  const { data: pacienteCitas, isLoading: pacienteCitasLoading } = useQuery({
+  const { data: pacienteCitas, isLoading: pacienteCitasLoading, isError: pacienteCitasError, error: pacienteCitasErr } = useQuery({
     queryKey: ['citas-paciente', profile?.pacienteId],
     queryFn: async () => { const r = await api.get(`/citas/paciente/${profile!.pacienteId}`); return r.data as Cita[]; },
     enabled: isPaciente && !!profile?.pacienteId,
@@ -46,6 +47,7 @@ export default function Citas() {
 
   const data = isPaciente ? { content: pacienteCitas || [], totalElements: pacienteCitas?.length || 0 } : crudData;
   const loading = isPaciente ? pacienteCitasLoading : crudLoading;
+  const citasError = isPaciente ? pacienteCitasError : crud.isError;
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null);
@@ -65,6 +67,7 @@ export default function Citas() {
   const { data: pacientes } = useQuery({
     queryKey: ['pacientes-lista'],
     queryFn: async () => { const r = await api.get('/pacientes'); return r.data as Paciente[]; },
+    enabled: !isPaciente,
   });
   const pacienteMap = new Map(pacientes?.map(p => [p.id, p]) || []);
 
@@ -247,15 +250,22 @@ export default function Citas() {
           </Space>
         </div>
         <Space>
-          <Input.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <Input.Search placeholder="Buscar por motivo..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { setCreateOpen(true); setSelectedPaciente(null); setFechaHora(null); setDoctoresOcupados([]); createForm.resetFields(); }}>Nueva Cita</Button>
         </Space>
       </div>
 
       <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
-        <Table columns={columns} dataSource={citasOrdenadas} rowKey="id" loading={loading} scroll={{ x: 650 }}
-          onRow={(r) => ({ onClick: () => { setSelectedCita(r); setDetailOpen(true); }, style: { cursor: 'pointer' } })}
-          pagination={{ current: page + 1, total: citasOrdenadas.length, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+        {citasError ? (
+          <ErrorAlert
+            message="No se pudieron cargar las citas"
+            description="El servicio de citas no está disponible en este momento. Por favor intenta más tarde."
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ['citas'] })}
+          />
+        ) : (
+          <Table columns={columns} dataSource={citasOrdenadas} rowKey="id" loading={loading} scroll={{ x: 650 }}
+            pagination={{ current: page + 1, total: citasOrdenadas.length, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+        )}
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Editar Cita</Text>}

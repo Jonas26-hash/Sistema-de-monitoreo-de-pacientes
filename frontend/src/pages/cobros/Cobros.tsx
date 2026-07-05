@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCrud } from '../../hooks/useCrud';
 import { showCrudSuccess } from '../../utils/notifications';
+import ErrorAlert from '../../components/common/ErrorAlert';
 import type { Cobro, Paciente, OrdenExamen, Receta, Servicio, Campania } from '../../types';
 import api from '../../services/api';
 import PacienteSearchByDni from '../../components/paciente/PacienteSearchByDni';
@@ -27,10 +28,10 @@ export default function Cobros() {
   const [selectedExamenes, setSelectedExamenes] = useState<number[]>([]);
   const [pagoPaso, setPagoPaso] = useState(0);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete } = useCrud<Cobro>({
+  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete, isError: cobrosError, error: cobrosErrorDetail } = useCrud<Cobro>({
     key: 'cobros',
     endpoint: '/cobros',
-    dateFields: ['fechaCobro'],
+    dateTimeFields: ['fechaCobro'],
   });
 
   const { data: pacientes } = useQuery({
@@ -298,15 +299,23 @@ export default function Cobros() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por descripción..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button icon={<WalletOutlined />} onClick={abrirPagoUnico} style={{ borderColor: '#00D4AA', color: '#00D4AA' }}>Pago Único</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nuevo Cobro</Button>
         </Space>
       </div>
 
       <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
-          pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+        {cobrosError ? (
+          <ErrorAlert
+            message="No se pudieron cargar los cobros"
+            description="El servicio de cobros no está disponible. Por favor intenta más tarde."
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ['cobros'] })}
+          />
+        ) : (
+          <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
+            pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+        )}
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Cobro' : 'Nuevo Cobro'}</Text>}

@@ -95,7 +95,7 @@ export default function Consultas() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por diagnóstico..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>Nueva Consulta</Button>
         </Space>
       </div>

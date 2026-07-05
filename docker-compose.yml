@@ -131,7 +131,6 @@ services:
     build:
       context: ./backend/ms-pacientes
       dockerfile: Dockerfile
-    container_name: ms-pacientes
     restart: on-failure
     user: root
     environment:

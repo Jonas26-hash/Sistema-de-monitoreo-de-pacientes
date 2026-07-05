@@ -132,6 +132,14 @@ public class AuthResource {
     }
 
     @GET
+    @Path("/check-status/{userId}")
+    public Response checkStatus(@PathParam("userId") Long userId) {
+        Usuario usuario = authService.findById(userId);
+        boolean activo = usuario != null && usuario.activo;
+        return Response.ok("{\"activo\":" + activo + ",\"exists\":" + (usuario != null) + "}").build();
+    }
+
+    @GET
     @Path("/usuarios/rol/{rol}")
     @RolesAllowed({"ADMIN", "ATENCION_CLIENTE", "DOCTOR", "ENFERMERO", "PACIENTE"})
     public Response listarPorRol(@PathParam("rol") String rol) {
@@ -226,16 +234,17 @@ public class AuthResource {
     @Path("/forgot-password")
     @Transactional
     public Response forgotPassword(Map<String, String> body) {
+        String username = body.get("username");
         String email = body.get("email");
-        if (email == null || email.isEmpty()) {
+        if (username == null || username.isEmpty() || email == null || email.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"error\":\"Email requerido\"}")
+                .entity("{\"error\":\"Usuario y email son requeridos\"}")
                 .build();
         }
 
-        Usuario usuario = Usuario.findByEmail(email);
+        Usuario usuario = Usuario.find("username = ?1 AND email = ?2", username, email).firstResult();
         if (usuario == null) {
-            return Response.ok("{\"mensaje\":\"Si el email est\u00e1 registrado, recibir\u00e1s un c\u00f3digo de verificaci\u00f3n\"}").build();
+            return Response.ok("{\"mensaje\":\"Si el usuario y email coinciden, recibir\u00e1s un c\u00f3digo de verificaci\u00f3n\"}").build();
         }
 
         String codigo = codigoService.generarCodigo();
@@ -244,14 +253,15 @@ public class AuthResource {
 
         try {
             String emailBody = mapper.writeValueAsString(Map.of("to", email, "codigo", codigo,
-                "subject", "Recuperaci\u00f3n de contrase\u00f1a - MedTrack",
-                "mensaje", "Tu c\u00f3digo para restablecer contrase\u00f1a es: " + codigo));
+                "username", username,
+                "nombres", usuario.nombres != null ? usuario.nombres : "",
+                "apellidos", usuario.apellidos != null ? usuario.apellidos : ""));
             notificacionesClient.enviarCorreo(emailBody);
         } catch (Exception e) {
             // Email service error - non-blocking
         }
 
-        return Response.ok("{\"mensaje\":\"Si el email est\u00e1 registrado, recibir\u00e1s un c\u00f3digo de verificaci\u00f3n\"}").build();
+        return Response.ok("{\"mensaje\":\"Si el usuario y email coinciden, recibir\u00e1s un c\u00f3digo de verificaci\u00f3n\"}").build();
     }
 
     @POST

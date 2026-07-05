@@ -160,7 +160,7 @@ export default function Examenes() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por tipo o descripción..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nueva Orden</Button>
         </Space>
       </div>

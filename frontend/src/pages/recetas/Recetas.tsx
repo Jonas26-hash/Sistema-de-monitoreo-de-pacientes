@@ -1,9 +1,10 @@
 import { Table, Button, Modal, Form, Input, InputNumber, DatePicker, Switch, Tag, Space, Input as SearchInput, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, MedicineBoxOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCrud } from '../../hooks/useCrud';
 import { useAuth } from '../../context/AuthContext';
+import ErrorAlert from '../../components/common/ErrorAlert';
 import type { Receta, Paciente, Consulta, User } from '../../types';
 import api from '../../services/api';
 import PacienteSearchByDni from '../../components/paciente/PacienteSearchByDni';
@@ -14,7 +15,8 @@ const { Title, Text } = Typography;
 export default function Recetas() {
   const [form] = Form.useForm();
   const { user } = useAuth();
-  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete } = useCrud<Receta>({
+  const queryClient = useQueryClient();
+  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete, isError: recetasError } = useCrud<Receta>({
     key: 'recetas',
     endpoint: '/recetas',
     dateFields: ['fechaEmision', 'fechaVigencia'],
@@ -129,15 +131,22 @@ export default function Recetas() {
           </Space>
         </div>
         <Space>
-          <SearchInput.Search placeholder="Buscar por DNI o nombre del paciente" allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
+          <SearchInput.Search placeholder="Buscar por medicamentos..." allowClear onSearch={setSearch} prefix={<SearchOutlined />} style={{ width: 240 }} />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nueva Receta</Button>
         </Space>
       </div>
 
       <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
-
-          pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+        {recetasError ? (
+          <ErrorAlert
+            message="No se pudieron cargar las recetas"
+            description="El servicio de recetas no está disponible. Por favor intenta más tarde."
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ['recetas'] })}
+          />
+        ) : (
+          <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
+            pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+        )}
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Receta' : 'Nueva Receta'}</Text>}

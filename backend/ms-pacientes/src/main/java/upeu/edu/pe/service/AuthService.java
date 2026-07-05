@@ -273,6 +273,9 @@ public class AuthService {
         }
 
         if (usuario.paciente != null) {
+            if (request.email != null) {
+                usuario.paciente.email = request.email;
+            }
             if (request.fechaNacimiento != null) {
                 usuario.paciente.fechaNacimiento = LocalDate.parse(request.fechaNacimiento);
             }

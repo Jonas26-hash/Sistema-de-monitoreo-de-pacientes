@@ -20,7 +20,7 @@ public class PacienteResource {
     PacienteService service;
 
     @GET
-    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
     public List<Paciente> listar(@QueryParam("search") String search) {
         return service.listar(search);
     }

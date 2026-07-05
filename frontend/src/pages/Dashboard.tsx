@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Row, Col, Card, Typography, Table, Tag, Space } from 'antd';
 import {
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [barData, setBarData] = useState<{ mes: string; citas: number; consultas: number }[]>([]);
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
   const isPaciente = user?.roles?.includes('PACIENTE');
+  const canSeeFinance = user?.roles?.includes('ADMIN') || user?.roles?.includes('ATENCION_CLIENTE');
 
   function friendlyAction(accion: string, recurso: string): string {
     const patterns: [RegExp, string][] = [
@@ -173,32 +174,40 @@ export default function Dashboard() {
       </div>
 
       <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
-        {[
-          { title: 'Pacientes Registrados', value: stats.pacientes, icon: <TeamOutlined />, color: '#00D4AA', bg: 'rgba(0,212,170,0.1)' },
-          { title: 'Citas Hoy', value: stats.citasHoy, icon: <CalendarOutlined />, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
-          { title: 'Consultas Hoy', value: stats.consultasHoy, icon: <FileTextOutlined />, color: '#14D6B0', bg: 'rgba(20,214,176,0.1)' },
-          { title: 'Recetas Emitidas', value: stats.recetas, icon: <MedicineBoxOutlined />, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-          { title: 'Ingresos Cobrados', value: `S/${stats.ingresos.toFixed(2)}`, icon: <DollarOutlined />, color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
-          { title: 'Pendientes de Pago', value: `S/${stats.pendientes.toFixed(2)}`, icon: <CreditCardOutlined />, color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
-        ].map((card, i) => (
-          <Col xs={12} sm={8} lg={4} key={i}>
-            <Card className="stat-card glass" style={{ borderRadius: 16, animationDelay: `${i * 0.1}s`, opacity: 0, animation: `slideUp 0.5s ease-out ${i * 0.1}s forwards` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 12, background: card.bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22, color: card.color,
-                }}>
-                  {card.icon}
+        {(() => {
+          const cards: { title: string; value: number | string; icon: React.ReactNode; color: string; bg: string }[] = [
+            { title: 'Pacientes Registrados', value: stats.pacientes, icon: <TeamOutlined />, color: '#00D4AA', bg: 'rgba(0,212,170,0.1)' },
+            { title: 'Citas Hoy', value: stats.citasHoy, icon: <CalendarOutlined />, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
+            { title: 'Consultas Hoy', value: stats.consultasHoy, icon: <FileTextOutlined />, color: '#14D6B0', bg: 'rgba(20,214,176,0.1)' },
+            { title: 'Recetas Emitidas', value: stats.recetas, icon: <MedicineBoxOutlined />, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+          ];
+          if (canSeeFinance) {
+            cards.push(
+              { title: 'Ingresos Cobrados', value: `S/${stats.ingresos.toFixed(2)}`, icon: <DollarOutlined />, color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
+              { title: 'Pendientes de Pago', value: `S/${stats.pendientes.toFixed(2)}`, icon: <CreditCardOutlined />, color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
+            );
+          }
+          const span = cards.length === 4 ? { xs: 12, sm: 12, lg: 6 } : { xs: 12, sm: 8, lg: 4 };
+          return cards.map((card, i) => (
+            <Col {...span} key={i}>
+              <Card className="stat-card glass" style={{ borderRadius: 16, animationDelay: `${i * 0.1}s`, opacity: 0, animation: `slideUp 0.5s ease-out ${i * 0.1}s forwards` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 12, background: card.bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, color: card.color,
+                  }}>
+                    {card.icon}
+                  </div>
+                  <div>
+                    <Text style={{ color: 'var(--text-secondary)', fontSize: 13, display: 'block' }}>{card.title}</Text>
+                    <Text style={{ color: 'var(--text-primary)', fontSize: 28, fontWeight: 700, lineHeight: 1.2 }}>{card.value}</Text>
+                  </div>
                 </div>
-                <div>
-                  <Text style={{ color: 'var(--text-secondary)', fontSize: 13, display: 'block' }}>{card.title}</Text>
-                  <Text style={{ color: 'var(--text-primary)', fontSize: 28, fontWeight: 700, lineHeight: 1.2 }}>{card.value}</Text>
-                </div>
-              </div>
-            </Card>
-          </Col>
-        ))}
+              </Card>
+            </Col>
+          ));
+        })()}
       </Row>
 
       <Row gutter={[20, 20]}>

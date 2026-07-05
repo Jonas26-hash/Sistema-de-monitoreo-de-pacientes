@@ -1,8 +1,13 @@
 package upeu.edu.pe.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.core.MediaType;
 import upeu.edu.pe.entity.Triaje;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,6 +20,20 @@ public class TriajeService {
             return Triaje.listAll();
         }
         String pattern = "%" + search.trim().toLowerCase() + "%";
+        String trimmed = search.trim();
+        if (trimmed.matches("\\d{8}")) {
+            try (Client client = ClientBuilder.newClient()) {
+                String json = client.target("http://ms-pacientes:8080")
+                    .path("pacientes/dni/" + trimmed)
+                    .request(MediaType.APPLICATION_JSON)
+                    .get(String.class);
+                JsonNode paciente = new ObjectMapper().readTree(json);
+                Long pid = paciente.get("id").asLong();
+                return Triaje.list("(LOWER(motivoConsulta) LIKE ?1 OR LOWER(observaciones) LIKE ?1) OR pacienteId = ?2", pattern, pid);
+            } catch (Exception e) {
+                // DNI not found, fall through
+            }
+        }
         return Triaje.list("LOWER(motivoConsulta) LIKE ?1 OR LOWER(observaciones) LIKE ?1", pattern);
     }
 

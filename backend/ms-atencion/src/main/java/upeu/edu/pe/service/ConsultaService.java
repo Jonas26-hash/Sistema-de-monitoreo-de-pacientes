@@ -1,10 +1,14 @@
 package upeu.edu.pe.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import upeu.edu.pe.entity.Consulta;
 import upeu.edu.pe.entity.EventOutbox;
@@ -26,6 +30,20 @@ public class ConsultaService {
             return Consulta.listAll();
         }
         String pattern = "%" + search.trim().toLowerCase() + "%";
+        String trimmed = search.trim();
+        if (trimmed.matches("\\d{8}")) {
+            try (Client client = ClientBuilder.newClient()) {
+                String json = client.target("http://ms-pacientes:8080")
+                    .path("pacientes/dni/" + trimmed)
+                    .request(MediaType.APPLICATION_JSON)
+                    .get(String.class);
+                JsonNode paciente = new ObjectMapper().readTree(json);
+                Long pid = paciente.get("id").asLong();
+                return Consulta.list("(LOWER(diagnostico) LIKE ?1 OR LOWER(sintomas) LIKE ?1 OR LOWER(tratamiento) LIKE ?1) OR pacienteId = ?2", pattern, pid);
+            } catch (Exception e) {
+                // DNI not found, fall through
+            }
+        }
         return Consulta.list("LOWER(diagnostico) LIKE ?1 OR LOWER(sintomas) LIKE ?1 OR LOWER(tratamiento) LIKE ?1", pattern);
     }
 

@@ -1,13 +1,16 @@
 import { Table, Button, Modal, Form, Input, InputNumber, Tag, Space, Input as SearchInput, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCrud } from '../../hooks/useCrud';
+import ErrorAlert from '../../components/common/ErrorAlert';
 import type { Medicamento } from '../../types';
 
 const { Title, Text } = Typography;
 
 export default function Medicamentos() {
   const [form] = Form.useForm();
-  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete } = useCrud<Medicamento>({
+  const queryClient = useQueryClient();
+  const { search, setSearch, data, loading, page, setPage, modalOpen, editing, openCreate, openEdit, closeModal, handleSave, handleDelete, isError: medicamentosError } = useCrud<Medicamento>({
     key: 'medicamentos',
     endpoint: '/medicamentos',
   });
@@ -60,8 +63,16 @@ export default function Medicamentos() {
       </div>
 
       <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
-        <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
-          pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+        {medicamentosError ? (
+          <ErrorAlert
+            message="No se pudieron cargar los medicamentos"
+            description="El servicio de farmacia no está disponible."
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ['medicamentos'] })}
+          />
+        ) : (
+          <Table columns={columns} dataSource={data?.content || []} rowKey="id" loading={loading} scroll={{ x: 650 }}
+            pagination={{ current: page + 1, total: data?.totalElements || 0, onChange: (p) => setPage(p - 1), showSizeChanger: false }} />
+        )}
       </div>
 
       <Modal title={<Text style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{editing ? 'Editar Medicamento' : 'Nuevo Medicamento'}</Text>}

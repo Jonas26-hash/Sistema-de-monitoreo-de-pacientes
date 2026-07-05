@@ -166,6 +166,9 @@ export function useCrud<T extends { id?: number }>({
     });
   }, [deleteMutation]);
 
+  const isError = listQuery.isError;
+  const error = listQuery.error;
+
   return {
     listQuery,
     createMutation,
@@ -186,5 +189,7 @@ export function useCrud<T extends { id?: number }>({
     canDelete,
     loading: listQuery.isLoading,
     data: listQuery.data as { content?: T[]; totalElements?: number; totalPages?: number } | undefined,
+    isError,
+    error,
   };
 }
