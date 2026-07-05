@@ -8,8 +8,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import upeu.edu.pe.entity.Paciente;
 import upeu.edu.pe.service.PacienteService;
+import upeu.edu.pe.service.ReniecService;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Path("/pacientes")
 @Produces(MediaType.APPLICATION_JSON)
@@ -18,6 +20,9 @@ public class PacienteResource {
 
     @Inject
     PacienteService service;
+
+    @Inject
+    ReniecService reniecService;
 
     @GET
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE", "FARMACEUTICO"})
@@ -45,6 +50,18 @@ public class PacienteResource {
             return Response.status(Response.Status.NOT_FOUND)
                 .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
+    }
+
+    @GET
+    @Path("/reniec/dni/{dni}")
+    public Response consultarReniec(@PathParam("dni") String dni) {
+        Optional<upeu.edu.pe.dto.ReniecResponse> result = reniecService.consultar(dni);
+        if (result.isPresent()) {
+            return Response.ok(result.get()).build();
+        }
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity(Map.of("error", "No se encontraron datos en RENIEC para el DNI " + dni))
+            .build();
     }
 
     @POST

@@ -19,6 +19,7 @@ export default function Pacientes() {
   const [form] = Form.useForm();
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailPaciente, setDetailPaciente] = useState<Paciente | null>(null);
+  const [reniecLoading, setReniecLoading] = useState(false);
   const [solicitaCuentaModalOpen, setSolicitaCuentaModalOpen] = useState(false);
   const [solicitaCuentaPaciente, setSolicitaCuentaPaciente] = useState<Paciente | null>(null);
   const [solicitaCuentaLoading, setSolicitaCuentaLoading] = useState(false);
@@ -139,6 +140,25 @@ export default function Pacientes() {
     endpoint: '/pacientes',
     dateFields: ['fechaNacimiento', 'vigenciaSeguro'],
   });
+
+  const handleDniChange = useCallback(async (value: string) => {
+    if (value.length !== 8) return;
+    setReniecLoading(true);
+    try {
+      const res = await api.get(`/pacientes/reniec/dni/${value}`);
+      if (res.data?.names) {
+        form.setFieldsValue({
+          nombres: res.data.names,
+          apellidoPaterno: res.data.paternalLastName,
+          apellidoMaterno: res.data.maternalLastName,
+        });
+      }
+    } catch {
+      // RENIEC no disponible — el usuario llena manual
+    } finally {
+      setReniecLoading(false);
+    }
+  }, [form]);
 
   const handleCreateOrEdit = useCallback(async (values: Paciente) => {
     if (editing?.id) {
@@ -353,7 +373,7 @@ export default function Pacientes() {
               <Input placeholder="Apellido materno" />
             </Form.Item>
             <Form.Item name="dni" label="DNI" rules={[{ required: true, pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
-              <Input placeholder="12345678" maxLength={8} />
+              <Input placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} />
             </Form.Item>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
