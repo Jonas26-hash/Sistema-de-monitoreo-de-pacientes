@@ -4,7 +4,7 @@ WORKDIR /app
 COPY pom.xml pom.xml
 COPY src src
 COPY .mvn .mvn
-RUN mvn package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 mvn package -DskipTests
 
 # Stage 2: Run
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.24

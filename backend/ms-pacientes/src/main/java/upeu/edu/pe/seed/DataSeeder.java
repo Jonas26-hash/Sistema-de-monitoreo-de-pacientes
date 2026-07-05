@@ -8,8 +8,10 @@ import jakarta.transaction.Transactional;
 import io.quarkus.runtime.StartupEvent;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.mindrot.jbcrypt.BCrypt;
+import upeu.edu.pe.entity.Paciente;
 import upeu.edu.pe.entity.Rol;
 import upeu.edu.pe.entity.Usuario;
+import java.time.LocalDate;
 
 @ApplicationScoped
 public class DataSeeder {
@@ -31,6 +33,32 @@ public class DataSeeder {
         }
     }
 
+    private Paciente crearPaciente(String nombres, String apellidoPaterno, String apellidoMaterno, String dni, String email, String telefono) {
+        Paciente p = new Paciente();
+        p.nombres = nombres;
+        p.apellidoPaterno = apellidoPaterno;
+        p.apellidoMaterno = apellidoMaterno;
+        p.dni = dni;
+        p.email = email;
+        p.telefono = telefono;
+        p.activo = true;
+        p.persist();
+        return p;
+    }
+
+    private void crearUsuario(String username, String password, String email, Rol rol, Paciente paciente, String nombres, String apellidos) {
+        Usuario u = new Usuario();
+        u.username = username;
+        u.password = BCrypt.hashpw(password, BCrypt.gensalt());
+        u.email = email;
+        u.roles = java.util.List.of(rol);
+        u.paciente = paciente;
+        u.activo = true;
+        u.nombres = nombres;
+        u.apellidos = apellidos;
+        u.persist();
+    }
+
     @Transactional
     void onStart(@Observes StartupEvent ev) {
         if (!"h2".equals(dbKind)) {
@@ -39,34 +67,42 @@ public class DataSeeder {
 
         if (Usuario.count() > 0) return;
 
-        Usuario admin = new Usuario();
-        admin.username = "admin";
-        admin.password = BCrypt.hashpw("admin123", BCrypt.gensalt());
-        admin.email = "admin@clinica.com";
-        admin.roles = java.util.List.of(Rol.ADMIN);
-        admin.activo = true;
-        admin.nombres = "Admin";
-        admin.apellidos = "Sistema";
-        admin.persist();
+        System.out.println("[DataSeeder] Sembrando datos iniciales...");
 
-        String[][] seedUsers = {
-            {"medico", "medico123", "medico@clinica.com", "Dr. Juan", "Perez"},
-            {"farmaceutico", "farma123", "farma@clinica.com", "Carlos", "Lopez"},
-            {"enfermero", "enfermero123", "enfermero@clinica.com", "Rosa", " Martinez"},
-            {"atencion", "atencion123", "atencion@clinica.com", "Ana", "Torres"},
-            {"paciente1", "paciente123", "paciente1@correo.com", "Pedro", "Ramirez"}
-        };
-        Rol[] roles = {Rol.DOCTOR, Rol.FARMACEUTICO, Rol.ENFERMERO, Rol.ATENCION_CLIENTE, Rol.PACIENTE};
-        for (int i = 0; i < seedUsers.length; i++) {
-            Usuario u = new Usuario();
-            u.username = seedUsers[i][0];
-            u.password = BCrypt.hashpw(seedUsers[i][1], BCrypt.gensalt());
-            u.email = seedUsers[i][2];
-            u.roles = java.util.List.of(roles[i]);
-            u.activo = true;
-            u.nombres = seedUsers[i][3];
-            u.apellidos = seedUsers[i][4];
-            u.persist();
-        }
+        Paciente pPedro = crearPaciente("Pedro", "Ramirez", "", "87654321", "pedro@correo.com", "+51999000001");
+        Paciente pHomero = crearPaciente("Homero", "Simpson", "Bouvier", "12345678", "chavezjonas500@gmail.com", "+51999000002");
+        Paciente pMaria = crearPaciente("Maria", "Lopez", "Garcia", "23456789", "maria@correo.com", "+51999000003");
+        Paciente pJuan = crearPaciente("Juan", "Rodriguez", "Perez", "34567890", "juan@correo.com", "+51999000004");
+        crearPaciente("Lisa", "Simpson", "Bouvier", "45678901", "lisa@correo.com", "+51999000005");
+        crearPaciente("Ned", "Flanders", "Van Houten", "56789012", "ned@correo.com", "+51999000006");
+        crearPaciente("Barney", "Gomez", "Sanchez", "67890123", "barney@correo.com", "+51999000007");
+        crearPaciente("Marge", "Simpson", "Bouvier", "78901234", "marge@correo.com", "+51999000008");
+        crearPaciente("Apu", "Nahasapeemapetilon", "Singh", "89012345", "apu@correo.com", "+51999000009");
+        crearPaciente("Milhouse", "Vargas", "Martinez", "90123456", "milhouse@correo.com", "+51999000010");
+
+        crearUsuario("admin", "admin123", "admin@clinica.com", Rol.ADMIN, null, "Admin", "Sistema");
+
+        crearUsuario("medico", "medico123", "medico@clinica.com", Rol.DOCTOR, null, "Dr. Juan", "Perez");
+        crearUsuario("ppicapiedra", "pedro123", "ppicapiedra@clinica.com", Rol.DOCTOR, null, "Pedro", "Picapiedra");
+        crearUsuario("doctor1", "doctor123", "doctor1@clinica.com", Rol.DOCTOR, null, "Juan", "Perez Garcia");
+        crearUsuario("doctor2", "doctor123", "doctor2@clinica.com", Rol.DOCTOR, null, "Maria", "Garcia Lopez");
+        crearUsuario("doctor3", "doctor123", "doctor3@clinica.com", Rol.DOCTOR, null, "Carlos", "Lopez Martinez");
+        crearUsuario("doctor4", "doctor123", "doctor4@clinica.com", Rol.DOCTOR, null, "Ana", "Martinez Torres");
+        crearUsuario("doctor5", "doctor123", "doctor5@clinica.com", Rol.DOCTOR, null, "Luis", "Torres Sanchez");
+        crearUsuario("medico2", "medico123", "medico2@clinica.com", Rol.DOCTOR, null, "Roberto", "Sanchez Ortiz");
+
+        crearUsuario("farmaceutico", "farma123", "farmaceutico@clinica.com", Rol.FARMACEUTICO, null, "Carlos", "Lopez");
+        crearUsuario("farma2", "farma123", "farma2@clinica.com", Rol.FARMACEUTICO, null, "Carlos", "Farmacia Perez");
+
+        crearUsuario("enfermero", "enfermero123", "enfermero@clinica.com", Rol.ENFERMERO, null, "Rosa", "Martinez");
+
+        crearUsuario("atencion", "atencion123", "atencion@clinica.com", Rol.ATENCION_CLIENTE, null, "Ana", "Torres");
+
+        crearUsuario("paciente1", "paciente123", "paciente1@correo.com", Rol.PACIENTE, pPedro, "Pedro", "Ramirez");
+        crearUsuario("Homero", "Homero123", "chavezjonas500@gmail.com", Rol.PACIENTE, pHomero, "Homero", "Simpson Bouvier");
+        crearUsuario("mlopez", "mlopez123", "mlopez@correo.com", Rol.PACIENTE, pMaria, "Maria", "Lopez Garcia");
+        crearUsuario("jrodriguez", "juan123", "jrodriguez@correo.com", Rol.PACIENTE, pJuan, "Juan", "Rodriguez Perez");
+
+        System.out.println("[DataSeeder] Seed completado: 10 pacientes, 17 usuarios");
     }
 }

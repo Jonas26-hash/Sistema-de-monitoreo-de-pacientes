@@ -168,6 +168,7 @@ services:
       EUREKA_URL: http://registry-server:8761/eureka
       EUREKA_APP_NAME: ms-atencion
       JWT_PUBLIC_KEY_PATH: file:/deployments/jwt/publicKey.pem
+      MS_PACIENTES_URL: http://ms-pacientes:8080
     volumes:
       - jwt-keys:/deployments/jwt
     depends_on:
@@ -191,6 +192,7 @@ services:
       EUREKA_URL: http://registry-server:8761/eureka
       EUREKA_APP_NAME: ms-recetas
       JWT_PUBLIC_KEY_PATH: file:/deployments/jwt/publicKey.pem
+      MS_PACIENTES_URL: http://ms-pacientes:8080
     volumes:
       - jwt-keys:/deployments/jwt
     depends_on:
@@ -239,6 +241,7 @@ services:
       EUREKA_URL: http://registry-server:8761/eureka
       EUREKA_APP_NAME: ms-cobros
       JWT_PUBLIC_KEY_PATH: file:/deployments/jwt/publicKey.pem
+      MS_PACIENTES_URL: http://ms-pacientes:8080
     volumes:
       - jwt-keys:/deployments/jwt
     depends_on:

@@ -4,7 +4,7 @@ WORKDIR /app
 COPY pom.xml pom.xml
 COPY src src
 COPY .mvn .mvn
-RUN mvn package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 mvn package -DskipTests
 
 # Stage 2: Run (uses same cached image to avoid redhat registry dependency)
 FROM maven:3.9-eclipse-temurin-21
