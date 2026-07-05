@@ -361,19 +361,19 @@ export default function Pacientes() {
         <Form form={form} layout="vertical" onFinish={handleCreateOrEdit} initialValues={editing || {}} preserve={false}
           style={{ width: '100%' }}>
           <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="dni" label="DNI" rules={[{ required: true, pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
+              <Input placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} />
+            </Form.Item>
+            <Form.Item name="apellidoMaterno" label="Apellido Materno" style={{ width: '50%' }}>
+              <Input placeholder="Apellido materno" />
+            </Form.Item>
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="nombres" label="Nombres" rules={[{ required: true }]} style={{ width: '50%' }}>
               <Input placeholder="Nombres" />
             </Form.Item>
             <Form.Item name="apellidoPaterno" label="Apellido Paterno" rules={[{ required: true }]} style={{ width: '50%' }}>
               <Input placeholder="Apellido paterno" />
-            </Form.Item>
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="apellidoMaterno" label="Apellido Materno" style={{ width: '50%' }}>
-              <Input placeholder="Apellido materno" />
-            </Form.Item>
-            <Form.Item name="dni" label="DNI" rules={[{ required: true, pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
-              <Input placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} />
             </Form.Item>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>

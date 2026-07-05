@@ -40,7 +40,8 @@ public class JwtAuthFilter implements ContainerRequestFilter {
         "/auth/pre-registro-personal",
         "/auth/self-register",
         "/auth/forgot-password",
-        "/auth/reset-password"
+        "/auth/reset-password",
+        "/pacientes/reniec"
     );
 
     private static final long CACHE_TTL_MS = 30_000;

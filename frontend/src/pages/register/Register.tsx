@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Form, Input, Button, Typography, Steps, message, Result } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, IdcardOutlined, KeyOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined, IdcardOutlined, KeyOutlined, SearchOutlined } from '@ant-design/icons';
 import PhoneInput from '../../components/common/PhoneInput';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +10,7 @@ const { Title, Text } = Typography;
 
 export default function Register() {
   const [form] = Form.useForm();
+  const [reniecLoading, setReniecLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [step, setStep] = useState(0);
@@ -41,6 +42,23 @@ export default function Register() {
       message.error(errMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDniChange = async (value: string) => {
+    if (value.length !== 8) return;
+    setReniecLoading(true);
+    try {
+      const res = await api.get(`/pacientes/reniec/dni/${value}`);
+      if (res.data?.names) {
+        form.setFieldsValue({
+          nombres: res.data.names,
+          apellidos: `${res.data.paternalLastName} ${res.data.maternalLastName ?? ''}`.trim(),
+        });
+      }
+    } catch {
+    } finally {
+      setReniecLoading(false);
     }
   };
 
@@ -89,14 +107,14 @@ export default function Register() {
             <Form form={form} layout="vertical" onFinish={handleSubmitData} size="large" requiredMark={false}>
               {step === 0 && (
                 <>
+                  <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]}>
+                    <Input prefix={<IdcardOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} style={{ height: 48, borderRadius: 10 }} />
+                  </Form.Item>
                   <Form.Item name="nombres" label="Nombres" rules={[{ required: true, message: 'Ingresa tus nombres' }]}>
                     <Input prefix={<UserOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="Tus nombres" style={{ height: 48, borderRadius: 10 }} />
                   </Form.Item>
                   <Form.Item name="apellidos" label="Apellidos" rules={[{ required: true, message: 'Ingresa tus apellidos' }]}>
                     <Input prefix={<UserOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="Tus apellidos" style={{ height: 48, borderRadius: 10 }} />
-                  </Form.Item>
-                  <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]}>
-                    <Input prefix={<IdcardOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="12345678" maxLength={8} style={{ height: 48, borderRadius: 10 }} />
                   </Form.Item>
                   <Form.Item name="telefono" label="Teléfono">
                     <PhoneInput size="large" style={{ height: 48, borderRadius: 10, overflow: 'hidden' }} />

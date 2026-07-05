@@ -24,6 +24,7 @@ export default function Usuarios() {
     createEndpoint: '/auth/register',
   });
 
+  const [reniecLoading, setReniecLoading] = useState(false);
   const [successModal, setSuccessModal] = useState<{ open: boolean; title: string; subtitle?: string; lottieSrc?: string }>({ open: false, title: '' });
   const [creatingWorker, setCreatingWorker] = useState(false);
   const queryClient = useQueryClient();
@@ -121,6 +122,23 @@ export default function Usuarios() {
     },
   ];
 
+  const handleDniChange = async (value: string) => {
+    if (value.length !== 8) return;
+    setReniecLoading(true);
+    try {
+      const res = await api.get(`/pacientes/reniec/dni/${value}`);
+      if (res.data?.names) {
+        form.setFieldsValue({
+          nombres: res.data.names,
+          apellidos: `${res.data.paternalLastName} ${res.data.maternalLastName ?? ''}`.trim(),
+        });
+      }
+    } catch {
+    } finally {
+      setReniecLoading(false);
+    }
+  };
+
   const handleCreateUser = async (values: User) => {
     setCreatingWorker(true);
     try {
@@ -207,6 +225,14 @@ export default function Usuarios() {
         <Form form={form} layout="vertical" onFinish={editing ? handleSave : handleCreateUser} initialValues={editing || { rol: 'DOCTOR' }} preserve={false}
           style={{ width: '100%' }}>
           <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
+              <Input placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} />
+            </Form.Item>
+            <Form.Item name="telefono" label="Teléfono" style={{ width: '50%' }}>
+              <PhoneInput />
+            </Form.Item>
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="nombres" label="Nombres" rules={[{ required: true }]} style={{ width: '50%' }}>
               <Input placeholder="Nombres" />
             </Form.Item>
@@ -235,14 +261,6 @@ export default function Usuarios() {
                 <Input disabled />
               </Form.Item>
             )}
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
-              <Input placeholder="12345678" maxLength={8} />
-            </Form.Item>
-            <Form.Item name="telefono" label="Teléfono" style={{ width: '50%' }}>
-              <PhoneInput />
-            </Form.Item>
           </div>
           {!editing && (
             <Form.Item name="rol" label="Rol" rules={[{ required: true }]}>
