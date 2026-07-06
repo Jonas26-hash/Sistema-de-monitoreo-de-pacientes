@@ -1,6 +1,7 @@
 package upeu.edu.pe.service;
 
 import io.quarkus.panache.common.Page;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
@@ -59,7 +60,7 @@ public class AuditService {
             : AuditLog.count(query.toString(), params);
 
         List<AuditLog> items = params.isEmpty()
-            ? AuditLog.findAll().page(Page.of(page, size)).list()
+            ? AuditLog.findAll(Sort.by("createdAt").descending()).page(Page.of(page, size)).list()
             : AuditLog.find(query.toString(), params).page(Page.of(page, size)).list();
 
         Map<String, Object> result = new HashMap<>();

@@ -76,4 +76,29 @@ public class CobroResource {
                 .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
         }
     }
+
+    @GET
+    @Path("/pendientes-verificacion")
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
+    public List<Cobro> pendientesVerificacion() {
+        return service.pendientesVerificacion();
+    }
+
+    @PUT
+    @Path("/{id}/verificar")
+    @RolesAllowed({"ADMIN", "ATENCION_CLIENTE"})
+    public Response verificar(@PathParam("id") Long id, String body) {
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(body);
+            String codigo = json.has("codigoVerificacion") ? json.get("codigoVerificacion").asText() : "";
+            return Response.ok(service.verificar(id, codigo)).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\":\"Error al verificar: " + e.getMessage().replace("\"", "'") + "\"}").build();
+        }
+    }
 }

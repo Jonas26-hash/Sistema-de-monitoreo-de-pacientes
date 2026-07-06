@@ -3,6 +3,12 @@
 Plataforma completa de gestión hospitalaria con **frontend React** + **backend microservicios** (Quarkus).  
 Login funcional, JWT asimétrico, disponibilidad de doctores en tiempo real, y formularios basados en DNI.
 
+<div align="center">
+  <a href="https://med-track-docs.vercel.app/">
+    <img src="https://img.shields.io/badge/📖_Documentación-MedTrack_Docs-0D7C6B?style=for-the-badge" alt="Documentación">
+  </a>
+</div>
+
 ## Arquitectura General
 
 ![Arquitectura General](Arquitectura.png)

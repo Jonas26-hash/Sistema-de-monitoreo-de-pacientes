@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, DatePicker, Select, Tag, Space, Typography, message, Descriptions, Divider, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, UserOutlined, MedicineBoxOutlined, EnvironmentOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +37,12 @@ export default function Citas() {
     queryKey: ['profile-citas'],
     queryFn: async () => { const r = await api.get('/auth/profile'); return r.data; },
     enabled: isPaciente,
+  });
+
+  const { data: miPaciente } = useQuery({
+    queryKey: ['mi-paciente-citas', profile?.pacienteId],
+    queryFn: async () => { const r = await api.get(`/pacientes/${profile!.pacienteId}`); return r.data as Paciente; },
+    enabled: isPaciente && !!profile?.pacienteId,
   });
 
   const { data: pacienteCitas, isLoading: pacienteCitasLoading, isError: pacienteCitasError, error: pacienteCitasErr } = useQuery({
@@ -152,6 +158,12 @@ export default function Citas() {
     }
   }, [createForm, profileForm]);
 
+  useEffect(() => {
+    if (createOpen && isPaciente && miPaciente && !selectedPaciente) {
+      handlePatientSelect(miPaciente);
+    }
+  }, [createOpen, isPaciente, miPaciente, selectedPaciente, handlePatientSelect]);
+
   const handleProfileComplete = useCallback(async () => {
     if (!selectedPaciente) return;
     try {
@@ -202,7 +214,7 @@ export default function Citas() {
       title: 'Paciente', key: 'pacienteId', render: (v: unknown, r: Cita) => { const p = pacienteMap.get(r.pacienteId); return p ? <Space size={4} wrap><UserOutlined style={{ color: '#00D4AA', fontSize: 14 }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombres} {p.apellidoPaterno}</Text><Tag style={{ borderRadius: 4, fontSize: 11, marginRight: 0 }}>{p.dni}</Tag></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.pacienteId}</Text>; }
     }] : []),
     { title: 'Doctor', key: 'doctorId', responsive: ['md'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: unknown, r: Cita) => { const d = (doctores || []).find(d => d.id === r.doctorId); return d ? <Space><MedicineBoxOutlined style={{ color: '#3B82F6' }} /><Text style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Dr. {d.nombres} {d.apellidos}{d.especialidad ? ` (${d.especialidad})` : ''}</Text></Space> : <Text style={{ color: 'var(--text-secondary)' }}>#{r.doctorId}</Text>; } },
-    { title: 'Fecha', dataIndex: 'fechaHora', key: 'fechaHora', responsive: ['sm'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: string) => { const esHoy = dayjs(v).isSame(dayjs(), 'day'); return (<Space><Text style={{ color: 'var(--text-secondary)' }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</Text>{esHoy && <Tag color="#00D4AA" style={{ borderRadius: 4, fontSize: 11, lineHeight: '18px', marginRight: 0 }}>Hoy</Tag>}</Space>); } },
+    { title: 'Fecha', dataIndex: 'fechaHora', key: 'fechaHora', render: (v: string) => { const esHoy = dayjs(v).isSame(dayjs(), 'day'); return (<Space><Text style={{ color: 'var(--text-secondary)' }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</Text>{esHoy && <Tag color="#00D4AA" style={{ borderRadius: 4, fontSize: 11, lineHeight: '18px', marginRight: 0 }}>Hoy</Tag>}</Space>); } },
     { title: 'Motivo', dataIndex: 'motivo', key: 'motivo', ellipsis: true, responsive: ['md'] as ('md' | 'sm' | 'lg' | 'xl' | 'xxl')[], render: (v: string) => <Text style={{ color: 'var(--text-secondary)' }}>{v}</Text> },
     {
       title: 'Estado', dataIndex: 'estado', key: 'estado',
@@ -255,7 +267,7 @@ export default function Citas() {
         </Space>
       </div>
 
-      <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
+      <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
         {citasError ? (
           <ErrorAlert
             message="No se pudieron cargar las citas"
@@ -263,8 +275,10 @@ export default function Citas() {
             onRetry={() => queryClient.invalidateQueries({ queryKey: ['citas'] })}
           />
         ) : (
-          <Table columns={columns} dataSource={citasOrdenadas} rowKey="id" loading={loading} scroll={{ x: 650 }}
-            pagination={{ current: page + 1, total: citasOrdenadas.length, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+          <div style={{ overflowX: 'auto' }}>
+            <Table columns={columns} dataSource={citasOrdenadas} rowKey="id" loading={loading} scroll={{ x: 650 }}
+              pagination={{ current: page + 1, total: citasOrdenadas.length, onChange: (p) => setPage(p - 1), showSizeChanger: false, size: 'small' }} />
+          </div>
         )}
       </div>
 
@@ -309,9 +323,11 @@ export default function Citas() {
         onOk={handleCreateSubmit} okText="Crear Cita" okButtonProps={{ loading: crearMutation.isPending, disabled: !selectedPaciente }} width={560} destroyOnClose
         styles={{ body: { padding: '24px 28px' } }}>
         <Form form={createForm} layout="vertical" preserve={false} style={{ width: '100%' }}>
-          <Form.Item label="Paciente" required>
-            <PacienteSearchByDni pacientes={pacientes || []} onSelect={handlePatientSelect} autoFocus />
-          </Form.Item>
+          {!isPaciente ? (
+            <Form.Item label="Paciente" required>
+              <PacienteSearchByDni pacientes={pacientes || []} onSelect={handlePatientSelect} autoFocus />
+            </Form.Item>
+          ) : null}
 
           {selectedPaciente && (
             <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, border: '1px solid var(--border-color)' }}>

@@ -165,7 +165,7 @@ export default function Perfil() {
 
         <Form form={form} layout="vertical" onFinish={handleSave} size="large" requiredMark={false}
           style={{ width: '100%' }}>
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div className="perfil-row" style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="nombres" label="Nombres" rules={[{ required: true }]} style={{ width: '50%' }}>
               <Input placeholder="Nombres" style={{ borderRadius: 10 }} />
             </Form.Item>
@@ -173,7 +173,7 @@ export default function Perfil() {
               <Input placeholder="Apellidos" style={{ borderRadius: 10 }} />
             </Form.Item>
           </div>
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div className="perfil-row" style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
               <Input prefix={<IdcardOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="12345678" maxLength={8} style={{ borderRadius: 10 }} />
             </Form.Item>
@@ -184,7 +184,7 @@ export default function Perfil() {
           <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
             <Input prefix={<MailOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="email@clinica.com" style={{ borderRadius: 10 }} />
           </Form.Item>
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div className="perfil-row" style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="fechaNacimiento" label="Fecha de Nacimiento" style={{ width: '50%' }}>
               <DatePicker style={{ width: '100%', borderRadius: 10 }} placeholder="Seleccione fecha" />
             </Form.Item>
@@ -203,13 +203,14 @@ export default function Perfil() {
             <Input placeholder="Ej: Cardiología" style={{ borderRadius: 10 }} />
           </Form.Item>
           <Divider />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="perfil-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Button icon={<LockOutlined />} onClick={() => setPasswordModalOpen(true)}
-              style={{ height: 44, borderRadius: 10, fontWeight: 500 }}>
+              style={{ height: 44, borderRadius: 10, fontWeight: 500, flex: '1 1 auto', minWidth: 0 }}>
               Cambiar Contraseña
             </Button>
             <Button type="primary" htmlType="submit" loading={saving}
-              style={{ height: 44, borderRadius: 10, fontWeight: 600, minWidth: 200, background: 'linear-gradient(135deg, #00D4AA, #059669)', border: 'none' }}>
+              className="profile-save-btn"
+              style={{ height: 44, borderRadius: 10, fontWeight: 600, background: 'linear-gradient(135deg, #00D4AA, #059669)', border: 'none' }}>
               Guardar Cambios
             </Button>
           </div>

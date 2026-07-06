@@ -33,5 +33,20 @@ export function isMobileDevice(): boolean {
 }
 
 export function buildYapeDeepLink(emvcoPayload: string): string {
-  return `yape://pago/${encodeURIComponent(emvcoPayload)}`;
+  return `yape://pago/${emvcoPayload}`;
+}
+
+export function buildYapeIntentUrl(emvcoPayload: string): string {
+  return `intent://pago/${emvcoPayload}#Intent;scheme=yape;package=com.yape.pe;end`;
+}
+
+export function openYapeApp(emvcoPayload: string): void {
+  const ua = navigator.userAgent;
+  const isAndroid = /Android/i.test(ua);
+  const isChrome = /Chrome/i.test(ua) && !/Edge/i.test(ua);
+  if (isAndroid && isChrome) {
+    window.location.href = buildYapeIntentUrl(emvcoPayload);
+  } else {
+    window.location.href = buildYapeDeepLink(emvcoPayload);
+  }
 }

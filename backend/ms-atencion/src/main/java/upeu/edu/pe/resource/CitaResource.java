@@ -127,6 +127,22 @@ public class CitaResource {
         }
     }
 
+    @DELETE
+    @Path("/{id}")
+    @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})
+    @Transactional
+    public Response eliminar(@PathParam("id") Long id) {
+        try {
+            Cita cita = citaService.buscar(id);
+            cita.estado = "CANCELADA";
+            cita.persist();
+            return Response.ok("{\"mensaje\":\"Cita cancelada\"}").build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        }
+    }
+
     @POST
     @Path("/por-dni")
     @RolesAllowed({"ADMIN", "DOCTOR", "ATENCION_CLIENTE"})

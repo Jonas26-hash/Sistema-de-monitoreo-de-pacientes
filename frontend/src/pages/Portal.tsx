@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Tabs, Card, Tag, Spin, Button, Space, Empty, Timeline, message, Divider, Steps, Modal, Descriptions } from 'antd';
-import { CalendarOutlined, MedicineBoxOutlined, ExperimentOutlined, DollarOutlined, FileTextOutlined, UserOutlined, RightOutlined, DownloadOutlined, WalletOutlined, CheckCircleOutlined, CreditCardOutlined, HeartOutlined, PrinterOutlined } from '@ant-design/icons';
+import { Typography, Tabs, Card, Tag, Spin, Button, Space, Empty, Timeline, message, Divider, Steps, Modal, Descriptions, Input } from 'antd';
+import { CalendarOutlined, MedicineBoxOutlined, ExperimentOutlined, DollarOutlined, FileTextOutlined, UserOutlined, RightOutlined, DownloadOutlined, WalletOutlined, CheckCircleOutlined, CreditCardOutlined, HeartOutlined, PrinterOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { Cita, Receta, OrdenExamen, Cobro, HistorialEntry } from '../types';
+import type { Cita, Receta, OrdenExamen, Cobro, HistorialEntry, Campania } from '../types';
 import dayjs from 'dayjs';
 import { generarPDF } from '../services/reportePDF';
 import QRCode from 'qrcode';
-import { buildEmvcoPayload, YAPE_NUMERO, isMobileDevice, buildYapeDeepLink } from '../utils/yape';
+import { buildEmvcoPayload, YAPE_NUMERO, isMobileDevice, openYapeApp } from '../utils/yape';
 
 const { Title, Text } = Typography;
 
 export default function Portal() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isPaciente = user?.roles?.includes('PACIENTE');
   const [tab, setTab] = useState('citas');
   const [pdfLoading, setPdfLoading] = useState(false);
 
@@ -38,10 +39,15 @@ export default function Portal() {
   const [examenDetailOpen, setExamenDetailOpen] = useState(false);
   const [selectedReceta, setSelectedReceta] = useState<any>(null);
   const [selectedExamen, setSelectedExamen] = useState<any>(null);
+  const [boletaDetailOpen, setBoletaDetailOpen] = useState(false);
+  const [selectedBoleta, setSelectedBoleta] = useState<any>(null);
+  const [citaDetailOpen, setCitaDetailOpen] = useState(false);
+  const [selectedCitaPortal, setSelectedCitaPortal] = useState<any>(null);
   const [selectedRecetas, setSelectedRecetas] = useState<number[]>([]);
   const [selectedExamenes, setSelectedExamenes] = useState<number[]>([]);
   const [selectedCobros, setSelectedCobros] = useState<number[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [codigoVerificacion, setCodigoVerificacion] = useState('');
   const queryClient = useQueryClient();
 
   const { data: citas, isLoading: loadingCitas } = useQuery({
@@ -73,6 +79,12 @@ export default function Portal() {
   const deudasCobros = Array.isArray(deudasRaw?.cobros) ? deudasRaw.cobros : [];
   const totalPendiente = [...deudasCobros, ...deudasRecetas, ...deudasExamenes].reduce((s: number, i: any) => s + (i.monto || i.costo || 0), 0);
 
+  const { data: campaniasActivas } = useQuery({
+    queryKey: ['campanias-activas'],
+    queryFn: async () => { const r = await api.get('/campanias/activas'); return (r.data || []) as Campania[]; },
+  });
+
+  const descuentoGlobal = campaniasActivas?.reduce((max, c) => Math.max(max, c.descuentoPorcentaje), 0) || 0;
   const montoBase = () => {
     let t = 0;
     deudasRecetas.filter((r: any) => selectedRecetas.includes(r.id)).forEach((r: any) => t += r.costo || 0);
@@ -80,15 +92,19 @@ export default function Portal() {
     deudasCobros.filter((c: any) => selectedCobros.includes(c.id)).forEach((c: any) => t += c.monto || 0);
     return t;
   };
-  const montoCents = () => Math.round(montoBase() * 100);
+  const montoDescuento = () => descuentoGlobal > 0 ? montoBase() * descuentoGlobal / 100 : 0;
+  const montoFinal = () => montoBase() - montoDescuento();
+  const montoCents = () => Math.round(montoFinal() * 100);
+
+  const [confirmPagoOpen, setConfirmPagoOpen] = useState(false);
 
   useEffect(() => {
-    if (pagoPaso !== 2 || montoBase() <= 0) return;
+    if (pagoPaso !== 2 || montoFinal() <= 0) return;
     const payload = buildEmvcoPayload(montoCents());
     QRCode.toDataURL(payload, { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } })
       .then(url => setQrDataUrl(url))
       .catch(() => setQrDataUrl(''));
-  }, [pagoPaso, montoBase(), montoCents()]);
+  }, [pagoPaso, montoFinal(), montoCents()]);
 
   const pagoMutation = useMutation({
     mutationFn: (values: any) => api.post('/cobros/pago-unico', values),
@@ -97,6 +113,23 @@ export default function Portal() {
       setPagoPaso(3);
     },
     onError: () => message.error('Error al procesar pago'),
+  });
+
+  const { data: boletasData, isLoading: loadingBoletas } = useQuery({
+    queryKey: ['portal-boletas', pacienteId],
+    queryFn: async () => { const r = await api.get(`/cobros/paciente/${pacienteId}`); return (r.data || []).filter((c: any) => c.estado === 'VERIFICADO' || c.estado === 'PAGADO') as any[]; },
+    enabled: !!pacienteId,
+  });
+
+  const cancelarCitaMutation = useMutation({
+    mutationFn: (cita: any) => api.put(`/citas/${cita.id}`, { ...cita, estado: 'CANCELADA' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal-citas'] });
+      message.success('Cita cancelada');
+      setCitaDetailOpen(false);
+      setSelectedCitaPortal(null);
+    },
+    onError: () => Modal.error({ title: 'Error', content: 'Error al cancelar la cita' }),
   });
 
   const { data: historial, isLoading: loadingHistorial } = useQuery({
@@ -189,6 +222,60 @@ export default function Portal() {
     win.document.close();
   };
 
+  const printBoletaPdf = (c: any) => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const p = paciente;
+    const nombre = p ? `${p.nombres || ''} ${p.apellidoPaterno || ''}${p.apellidoMaterno ? ' ' + p.apellidoMaterno : ''}`.trim() : '';
+    const rucClinica = '20457698321';
+    const serie = 'B001';
+    win.document.write(`<html><head><title>Boleta #${c.id}</title><style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e}
+      .header{text-align:center;border-bottom:2px solid #00D4AA;padding-bottom:16px;margin-bottom:24px}
+      .header h1{color:#00D4AA;font-size:22px;margin-bottom:4px}
+      .header p{color:#64748b;font-size:12px}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+      .grid div label{color:#64748b;font-size:11px;text-transform:uppercase;display:block;margin-bottom:2px}
+      .grid div span{font-size:14px;font-weight:600}
+      h2{font-size:15px;color:#00D4AA;margin-bottom:10px;border-bottom:1px solid #e2e8f0;padding-bottom:6px}
+      table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+      table th{border-bottom:1px solid #000;padding:4px 2px;text-align:left;font-weight:600;background:#f8fafc}
+      table td{padding:4px 2px;border-bottom:1px dashed #e2e8f0}
+      table td.right{text-align:right}
+      .totals{margin-left:auto;width:250px;font-size:11px}
+      .totals div{display:flex;justify-content:space-between;padding:2px 0}
+      .totals .grand{border-top:2px solid #000;font-weight:700;font-size:13px;padding-top:4px;margin-top:4px}
+      .footer{text-align:center;margin-top:30px;padding-top:12px;border-top:1px dashed #e2e8f0;font-size:10px;color:#94a3b8}
+      .firma{margin-top:30px;width:200px;border-top:1px solid #1a1a2e;text-align:center;font-size:12px;color:#64748b;padding-top:6px;margin-left:auto}
+      @media print{body{padding:20px}}
+    </style></head><body>
+      <div class="header"><h1>BOLETA DE VENTA</h1><p>Clínica - Sistema de Monitoreo de Pacientes</p></div>
+      <div class="grid">
+        <div><label>N° Boleta</label><span>#${c.id}</span></div>
+        <div><label>Fecha</label><span>${c.fechaCobro ? dayjs(c.fechaCobro).format('DD/MM/YYYY HH:mm') : '-'}</span></div>
+        <div><label>Cliente</label><span>${nombre}</span></div>
+        <div><label>RUC</label><span>${rucClinica}</span></div>
+        <div><label>Serie-N°</label><span>${serie}-${String(c.id).padStart(6,'0')}</span></div>
+        <div><label>Estado</label><span>${c.estado}</span></div>
+      </div>
+      <h2>Detalle</h2>
+      <table>
+        <thead><tr><th>Cant.</th><th>Descripción</th><th class="right">Precio</th><th class="right">Total</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>${c.descripcion || c.tipo || 'Pago'}</td><td class="right">S/. ${Number(c.monto || 0).toFixed(2)}</td><td class="right">S/. ${Number(c.monto || 0).toFixed(2)}</td></tr>
+        </tbody>
+      </table>
+      <div class="totals">
+        <div><span>Total:</span><span>S/. ${Number(c.monto || 0).toFixed(2)}</span></div>
+      </div>
+      <div class="footer"><div class="firma">Firma del Paciente</div></div>
+      <p style="text-align:center;color:#94a3b8;font-size:10px;margin-top:24px">Documento generado electrónicamente</p>
+      <script>window.print();window.close();<\/script>
+    </body></html>`);
+    win.document.close();
+  };
+
   const estadoTag = (estado: string) => {
     const colors: Record<string, string> = { PROGRAMADA: 'blue', CONFIRMADA: 'cyan', EN_CURSO: 'orange', COMPLETADA: 'green', CANCELADA: 'red', PENDIENTE: 'orange', PAGADO: 'green', ACTIVO: 'green', INACTIVO: 'default' };
     return <Tag color={colors[estado] || 'default'}>{estado}</Tag>;
@@ -229,7 +316,8 @@ export default function Portal() {
                 {upcomingCitas.length > 0 && <>
                   <Text strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8 }}>Próximas</Text>
                   {upcomingCitas.map((c: any) => (
-                    <Card key={c.id} className="portal-card" size="small" onClick={() => navigate('/citas')}>
+                    <Card key={c.id} className="portal-card" size="small" hoverable
+                      onClick={() => { setSelectedCitaPortal(c); setCitaDetailOpen(true); }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <Text strong style={{ color: 'var(--text-primary)' }}>{c.motivo || 'Cita'}</Text>
@@ -248,7 +336,8 @@ export default function Portal() {
                 {pastCitas.length > 0 && <>
                   <Text strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8 }}>Anteriores</Text>
                   {pastCitas.map((c: any) => (
-                    <Card key={c.id} className="portal-card" size="small">
+                    <Card key={c.id} className="portal-card" size="small" hoverable
+                      onClick={() => { setSelectedCitaPortal(c); setCitaDetailOpen(true); }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <Text style={{ color: 'var(--text-primary)' }}>{c.motivo || 'Cita'}</Text>
@@ -350,17 +439,42 @@ export default function Portal() {
                     </Card>
                   ))}
                 </div>
-                <div style={{ background: '#f0fdf4', borderRadius: 12, padding: '14px 18px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <Text style={{ fontWeight: 700, fontSize: 16, color: '#065f46' }}>Total Pendiente</Text>
-                    <Text style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>
-                      {deudasCobros.length + deudasRecetas.length + deudasExamenes.length} item(s)
-                    </Text>
+                <div className="portal-pago-footer" style={{ background: '#f0fdf4', borderRadius: 12, padding: '14px 18px', marginTop: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <Text style={{ fontWeight: 700, fontSize: 16, color: '#065f46' }}>Total Pendiente</Text>
+                      <Text style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>
+                        {deudasCobros.length + deudasRecetas.length + deudasExamenes.length} item(s)
+                      </Text>
+                    </div>
+                    <Button type="primary" icon={<WalletOutlined />} onClick={() => { setShowPayment(true); setPagoPaso(1); setSelectedRecetas([]); setSelectedExamenes([]); setSelectedCobros([]); }} style={{ background: '#00D4AA', borderColor: '#00D4AA' }}>
+                      Pagar con Yape
+                    </Button>
                   </div>
-                  <Button type="primary" icon={<WalletOutlined />} onClick={() => { setShowPayment(true); setPagoPaso(1); setSelectedRecetas([]); setSelectedExamenes([]); setSelectedCobros([]); }} style={{ background: '#00D4AA', borderColor: '#00D4AA' }}>
-                    Pagar con Yape
-                  </Button>
                 </div>
+              </div>
+            ),
+          },
+          {
+            key: 'boletas', label: <span><PrinterOutlined /> Boletas</span>,
+            children: loadingBoletas ? <Spin style={{ display: 'block', padding: 40 }} /> : !boletasData?.length ? <Empty description="Sin boletas generadas" /> : (
+              <div className="portal-card-list">
+                {boletasData.map((c: any) => (
+                  <Card key={c.id} className="portal-card" size="small" hoverable
+                    onClick={() => { setSelectedBoleta(c); setBoletaDetailOpen(true); }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <Text strong style={{ color: 'var(--text-primary)' }}>Boleta #{c.id}</Text>
+                        <br /><Text style={{ color: 'var(--text-muted)', fontSize: 12 }}>{c.fechaCobro ? dayjs(c.fechaCobro).format('DD/MM/YYYY') : '-'}</Text>
+                        {c.descripcion && <><br /><Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{c.descripcion}</Text></>}
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <Text style={{ fontWeight: 700, fontSize: 16, color: '#00D4AA' }}>S/{Number(c.monto || 0).toFixed(2)}</Text>
+                        <br />{estadoTag(c.estado)}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             ),
           },
@@ -396,23 +510,22 @@ export default function Portal() {
         ]}
       />
       <Modal title={<Text style={{ fontWeight: 600 }}>Pagar con Yape</Text>}
-        open={showPayment} onCancel={() => { setShowPayment(false); setPagoPaso(1); setSelectedRecetas([]); setSelectedExamenes([]); setSelectedCobros([]); }}
-        width={520} destroyOnClose
-        footer={pagoPaso === 2 ? [
-          <Button key="back" onClick={() => setPagoPaso(1)}>Atrás</Button>,
-          <Button key="pay" type="primary" icon={<CheckCircleOutlined />} size="large"
-            loading={pagoMutation.isPending} onClick={() => pagoMutation.mutate({
-              pacienteId, recetaIds: selectedRecetas, examenIds: selectedExamenes, cobroIds: selectedCobros,
-              monto: montoBase(), tipoComprobante: 'BOLETA', numDocumento: paciente?.dni || '',
-              descripcion: `Pago desde portal - ${selectedRecetas.length} receta(s), ${selectedExamenes.length} examen(es), ${selectedCobros.length} cobro(s)`,
-            })} style={{ background: '#00D4AA', borderColor: '#00D4AA', height: 48, fontWeight: 600 }}>
-            Ya pagué — Confirmar
-          </Button>,
-        ] : pagoPaso === 3 ? [
-          <Button key="close" type="primary" onClick={() => { setShowPayment(false); setPagoPaso(1); setSelectedRecetas([]); setSelectedExamenes([]); setSelectedCobros([]); }}>Cerrar</Button>,
+        open={showPayment} onCancel={() => { setShowPayment(false); setPagoPaso(1); setSelectedRecetas([]); setSelectedExamenes([]); setSelectedCobros([]); setCodigoVerificacion(''); }}
+        width={520} destroyOnClose className="portal-pago-modal"
+        footer={pagoPaso === 2 ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%' }}>
+            <Button key="back" onClick={() => setPagoPaso(1)} style={{ flex: isMobileDevice() ? 1 : 'none' }}>Atrás</Button>
+            <Button key="pay" type="primary" icon={<CheckCircleOutlined />} size="large"
+              loading={pagoMutation.isPending} onClick={() => setConfirmPagoOpen(true)}
+              style={{ background: '#00D4AA', borderColor: '#00D4AA', height: 48, fontWeight: 600, flex: isMobileDevice() ? 1 : 'none' }}>
+              Ya pagué — Confirmar
+            </Button>
+          </div>
+        ) : pagoPaso === 3 ? [
+          <Button key="close" type="primary" onClick={() => { setShowPayment(false); setPagoPaso(1); setSelectedRecetas([]); setSelectedExamenes([]); setSelectedCobros([]); setCodigoVerificacion(''); }}>Cerrar</Button>,
         ] : undefined}
         styles={{ body: { padding: '24px 28px', minHeight: 300 } }}>
-        <Steps current={pagoPaso - 1} style={{ marginBottom: 24 }} items={[{ title: 'Seleccionar' }, { title: 'Yape QR' }, { title: 'Éxito' }]} />
+        <Steps current={pagoPaso - 1} style={{ marginBottom: 24 }} items={[{ title: 'Seleccionar' }, { title: 'Yape QR' }, { title: codigoVerificacion ? 'Verificación' : 'Éxito' }]} />
         {pagoPaso === 1 && (
           <div>
             {(deudasRecetas.length + deudasExamenes.length + deudasCobros.length) === 0 && (
@@ -461,16 +574,30 @@ export default function Portal() {
               </div>
             )}
             {(deudasRecetas.length + deudasExamenes.length + deudasCobros.length) > 0 && (
-              <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Text style={{ fontWeight: 600, color: '#065f46' }}>Total a pagar</Text>
-                  <Text style={{ fontWeight: 700, fontSize: 16, color: '#059669' }}>S/. {montoBase().toFixed(2)}</Text>
+              <div>
+                {descuentoGlobal > 0 && montoBase() > 0 && (
+                  <div style={{ background: '#fefce8', padding: '8px 12px', borderRadius: 8, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <Text style={{ color: '#92400e' }}>Subtotal</Text>
+                      <Text style={{ color: '#92400e' }}>S/. {montoBase().toFixed(2)}</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <Text style={{ color: '#059669' }}>Descuento campaña ({descuentoGlobal}%)</Text>
+                      <Text style={{ color: '#059669', fontWeight: 600 }}>- S/. {montoDescuento().toFixed(2)}</Text>
+                    </div>
+                  </div>
+                )}
+                <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text style={{ fontWeight: 600, color: '#065f46' }}>Total a pagar</Text>
+                    <Text style={{ fontWeight: 700, fontSize: 16, color: '#059669' }}>S/. {montoFinal().toFixed(2)}</Text>
+                  </div>
                 </div>
               </div>
             )}
-            <div style={{ marginTop: 16 }}>
-              <Button type="primary" disabled={montoBase() <= 0} onClick={() => setPagoPaso(2)}
-                style={isMobileDevice() ? { background: '#7C3AED', borderColor: '#7C3AED', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' } : { background: '#00D4AA', borderColor: '#00D4AA' }}>
+            <div style={{ marginTop: 16, width: '100%' }}>
+              <Button type="primary" disabled={montoFinal() <= 0} onClick={() => setPagoPaso(2)} block
+                style={isMobileDevice() ? { background: '#7C3AED', borderColor: '#7C3AED', boxShadow: '0 4px 12px rgba(124,58,237,0.3)', height: 48, fontWeight: 600, fontSize: 16 } : { background: '#00D4AA', borderColor: '#00D4AA' }}>
                 {isMobileDevice() ? 'Pagar con Yape' : 'Generar QR Yape'}
               </Button>
             </div>
@@ -482,8 +609,13 @@ export default function Portal() {
               <div>
                 <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: 16, padding: 24, marginBottom: 16, border: '2px solid #7C3AED' }}>
                   <Text style={{ display: 'block', fontSize: 13, color: '#6b7280', marginBottom: 4 }}>Total a pagar</Text>
+                  {descuentoGlobal > 0 && (
+                    <Text style={{ display: 'block', fontSize: 12, color: '#059669', marginBottom: 4 }}>
+                      {descuentoGlobal}% desc. campaña aplicado
+                    </Text>
+                  )}
                   <Text style={{ display: 'block', fontSize: 36, fontWeight: 700, color: '#7C3AED', marginBottom: 24 }}>
-                    S/. {montoBase().toFixed(2)}
+                    S/. {montoFinal().toFixed(2)}
                   </Text>
 
                   <Button
@@ -491,12 +623,13 @@ export default function Portal() {
                     size="large"
                     onClick={() => {
                       const payload = buildEmvcoPayload(montoCents());
-                      window.location.href = buildYapeDeepLink(payload);
+                      openYapeApp(payload);
                     }}
                     style={{
                       height: 56, borderRadius: 16, fontSize: 18, fontWeight: 700,
                       background: '#7C3AED', border: 'none', boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
                       display: 'inline-flex', alignItems: 'center', gap: 12, padding: '0 32px',
+                      width: '100%', maxWidth: 320, justifyContent: 'center',
                     }}
                   >
                     <span style={{
@@ -508,18 +641,12 @@ export default function Portal() {
                   </Button>
 
                   <div style={{ marginTop: 12 }}>
-                    <Button type="link" style={{ color: '#7C3AED', fontSize: 12 }}
-                      onClick={() => {
-                        const payload = buildEmvcoPayload(montoCents());
-                        QRCode.toDataURL(payload, { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } })
-                          .then(url => setQrDataUrl(url))
-                          .catch(() => {});
-                      }}>
-                      Ver código QR como respaldo
-                    </Button>
+                    <Text style={{ fontSize: 12, color: '#7C3AED', display: 'block', marginBottom: 8 }}>
+                      O escanea el QR con Yape:
+                    </Text>
                     {qrDataUrl && (
-                      <div style={{ marginTop: 8 }}>
-                        <img src={qrDataUrl} alt="QR Yape" style={{ width: 140, height: 140, borderRadius: 8 }} />
+                      <div style={{ padding: 8, background: '#fff', borderRadius: 12, display: 'inline-block', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                        <img src={qrDataUrl} alt="QR Yape" style={{ width: 140, height: 140, borderRadius: 8, display: 'block' }} />
                       </div>
                     )}
                   </div>
@@ -528,7 +655,7 @@ export default function Portal() {
                 <div style={{ background: '#fefce8', borderRadius: 12, padding: 12, textAlign: 'left' }}>
                   <Text style={{ fontSize: 12, color: '#92400e' }}>
                     <HeartOutlined style={{ marginRight: 6 }} />
-                    Presiona "Pagar con Yape" para abrir la app. Confirma el monto y yapea. Luego presiona "Ya pagué".
+                    Presiona "Pagar con Yape" para abrir la app. Si no se abre automáticamente, presiona el botón nuevamente. Confirma el monto y yapea. Luego presiona "Ya pagué".
                   </Text>
                 </div>
               </div>
@@ -536,7 +663,12 @@ export default function Portal() {
               <div>
                 <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', borderRadius: 16, padding: 24, marginBottom: 16, border: '2px solid #00D4AA' }}>
                   <Text style={{ display: 'block', fontSize: 13, color: '#6b7280', marginBottom: 4 }}>Total a pagar</Text>
-                  <Text style={{ display: 'block', fontSize: 36, fontWeight: 700, color: '#059669', marginBottom: 20 }}>S/. {montoBase().toFixed(2)}</Text>
+                  {descuentoGlobal > 0 && (
+                    <Text style={{ display: 'block', fontSize: 12, color: '#059669', marginBottom: 4 }}>
+                      {descuentoGlobal}% desc. campaña aplicado
+                    </Text>
+                  )}
+                  <Text style={{ display: 'block', fontSize: 36, fontWeight: 700, color: '#059669', marginBottom: 20 }}>S/. {montoFinal().toFixed(2)}</Text>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                     <div style={{ padding: 8, background: '#fff', borderRadius: 16, boxShadow: '0 4px 16px rgba(0,212,170,0.15)', border: '2px solid #00D4AA' }}>
                       <img src={qrDataUrl || undefined} alt="QR Yape" style={{ width: 180, height: 180, borderRadius: 8, display: 'block' }} />
@@ -559,17 +691,64 @@ export default function Portal() {
                 </div>
               </div>
             )}
+            <div style={{ marginTop: 16, background: '#fffbeb', borderRadius: 12, padding: 12, border: '1px solid #fde68a' }}>
+              <Text style={{ display: 'block', fontSize: 12, color: '#92400e', marginBottom: 4 }}>
+                <HeartOutlined style={{ marginRight: 4 }} /> Ingresa el código de 3 dígitos que Yape te mostró al confirmar el pago. El staff lo usará para verificar.
+              </Text>
+              <Input
+                size="large" placeholder="Código Yape (3 dígitos)" maxLength={3}
+                value={codigoVerificacion} onChange={e => setCodigoVerificacion(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                style={{ textAlign: 'center', fontSize: 24, fontWeight: 700, letterSpacing: 8, fontFamily: 'monospace', border: codigoVerificacion.length === 3 ? '2px solid #00D4AA' : '2px solid #e5e7eb', borderRadius: 8, maxWidth: 160, margin: '0 auto', background: '#fff', color: '#000' }}
+              />
+            </div>
           </div>
         )}
         {pagoPaso === 3 && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <CheckCircleOutlined style={{ fontSize: 40, color: '#00D4AA' }} />
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: codigoVerificacion ? '#fef3c7' : '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              {codigoVerificacion ? <HeartOutlined style={{ fontSize: 40, color: '#f59e0b' }} /> : <CheckCircleOutlined style={{ fontSize: 40, color: '#00D4AA' }} />}
             </div>
-            <Title level={4} style={{ margin: 0, color: '#059669' }}>¡Pago registrado!</Title>
-            <Text style={{ color: 'var(--text-muted)', display: 'block', marginTop: 8 }}>Tu pago ha sido procesado correctamente.</Text>
+            <Title level={4} style={{ margin: 0, color: codigoVerificacion ? '#d97706' : '#059669' }}>
+              {codigoVerificacion ? 'Pago enviado — Pendiente de verificación' : '¡Pago registrado!'}
+            </Title>
+            <Text style={{ color: 'var(--text-muted)', display: 'block', marginTop: 8 }}>
+              {codigoVerificacion
+                ? 'Personal de atención verificará tu pago usando el código que ingresaste. Revisa la sección "Boletas" más tarde.'
+                : 'Tu pago ha sido procesado correctamente.'}
+            </Text>
           </div>
         )}
+      </Modal>
+
+      <Modal title={<Text style={{ fontWeight: 600 }}>Confirmar pago</Text>}
+        open={confirmPagoOpen} onCancel={() => setConfirmPagoOpen(false)}
+        okText="Sí, confirmar pago" cancelText="Cancelar" width={440} destroyOnClose
+        onOk={() => {
+          setConfirmPagoOpen(false);
+          pagoMutation.mutate({
+            pacienteId, recetaIds: selectedRecetas, examenIds: selectedExamenes, cobroIds: selectedCobros,
+            monto: montoFinal(), tipoComprobante: 'BOLETA', numDocumento: paciente?.dni || '',
+            descripcion: `Pago desde portal - ${selectedRecetas.length} receta(s), ${selectedExamenes.length} examen(es), ${selectedCobros.length} cobro(s)`,
+            codigoVerificacion: codigoVerificacion || undefined,
+          });
+        }}
+        okButtonProps={{ loading: pagoMutation.isPending, danger: false, style: { background: '#00D4AA', borderColor: '#00D4AA', height: 44, fontWeight: 600 } }}>
+        <div style={{ textAlign: 'center', padding: '12px 0' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <WalletOutlined style={{ fontSize: 32, color: '#f59e0b' }} />
+          </div>
+          <Text style={{ display: 'block', fontSize: 15, color: 'var(--text-primary)', marginBottom: 8 }}>
+            ¿Realizaste el pago de <strong>S/. {montoFinal().toFixed(2)}</strong> por Yape?
+          </Text>
+          {descuentoGlobal > 0 && (
+            <Text style={{ display: 'block', fontSize: 13, color: '#059669', marginBottom: 8 }}>
+              Descuento de campaña ({descuentoGlobal}%) aplicado
+            </Text>
+          )}
+          <Text style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)' }}>
+            Al confirmar, tu pago se registrará automáticamente.
+          </Text>
+        </div>
       </Modal>
 
       <Modal title={<Text style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Detalle de Receta #{selectedReceta?.id}</Text>}
@@ -643,6 +822,92 @@ export default function Portal() {
               <Button type="primary" icon={<PrinterOutlined />} style={{ background: '#8B5CF6', borderColor: '#8B5CF6' }} onClick={() => printExamenPdf(selectedExamen)}>
                 Descargar PDF
               </Button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      <Modal title={<Text style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Detalle de Boleta #{selectedBoleta?.id}</Text>}
+        open={boletaDetailOpen} onCancel={() => { setBoletaDetailOpen(false); setSelectedBoleta(null); }} footer={null} width={650} destroyOnClose
+        styles={{ body: { padding: '24px 28px' } }}>
+        {!selectedBoleta ? <Spin /> : (
+          <>
+            <Descriptions bordered column={1} size="small" labelStyle={{ fontWeight: 500, color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.02)' }} contentStyle={{ color: 'var(--text-primary)' }}>
+              <Descriptions.Item label="Cliente">{paciente?.nombres || ''} {paciente?.apellidoPaterno || ''} {paciente?.apellidoMaterno || ''}</Descriptions.Item>
+              <Descriptions.Item label="DNI">{paciente?.dni || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Serie-N°">B001-{String(selectedBoleta.id).padStart(6, '0')}</Descriptions.Item>
+              <Descriptions.Item label="Fecha Emisión">{selectedBoleta.fechaCobro ? dayjs(selectedBoleta.fechaCobro).format('DD/MM/YYYY HH:mm') : '-'}</Descriptions.Item>
+              <Descriptions.Item label="Estado">{estadoTag(selectedBoleta.estado)}</Descriptions.Item>
+              <Descriptions.Item label="Tipo">{selectedBoleta.tipo || 'Pago'}</Descriptions.Item>
+              <Descriptions.Item label="Descripción">{selectedBoleta.descripcion || '-'}</Descriptions.Item>
+            </Descriptions>
+
+            <Divider />
+            <Text strong style={{ display: 'block', marginBottom: 8, color: 'var(--text-primary)' }}>Items</Text>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'rgba(0,212,170,0.08)', borderBottom: '2px solid #00D4AA' }}>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Cant.</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Descripción</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>Precio</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: '8px 10px' }}>1</td>
+                  <td style={{ padding: '8px 10px' }}>{selectedBoleta.descripcion || selectedBoleta.tipo || 'Pago'}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right' }}>S/. {Number(selectedBoleta.monto || 0).toFixed(2)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right' }}>S/. {Number(selectedBoleta.monto || 0).toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(0,212,170,0.05)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>Total</Text>
+              <Text style={{ fontWeight: 700, fontSize: 18, color: '#00D4AA' }}>S/. {Number(selectedBoleta.monto || 0).toFixed(2)}</Text>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <Button onClick={() => { setBoletaDetailOpen(false); setSelectedBoleta(null); }}>Cerrar</Button>
+              <Button type="primary" icon={<PrinterOutlined />} style={{ background: '#00D4AA', borderColor: '#00D4AA' }} onClick={() => printBoletaPdf(selectedBoleta)}>
+                Descargar PDF
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      <Modal title={<Text style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Detalle de Cita #{selectedCitaPortal?.id}</Text>}
+        open={citaDetailOpen} onCancel={() => { setCitaDetailOpen(false); setSelectedCitaPortal(null); }} footer={null} width={600} destroyOnClose
+        styles={{ body: { padding: '24px 28px' } }}>
+        {!selectedCitaPortal ? <Spin /> : (
+          <>
+            <Descriptions bordered column={1} size="small" labelStyle={{ fontWeight: 500, color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.02)' }} contentStyle={{ color: 'var(--text-primary)' }}>
+              <Descriptions.Item label="Motivo">{selectedCitaPortal.motivo || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Doctor">{selectedCitaPortal.doctorNombre || `#${selectedCitaPortal.doctorId}`}</Descriptions.Item>
+              <Descriptions.Item label="Fecha y Hora">{dayjs(selectedCitaPortal.fechaHora).format('DD/MM/YYYY h:mm A')}</Descriptions.Item>
+              <Descriptions.Item label="Estado">{estadoTag(selectedCitaPortal.estado)}</Descriptions.Item>
+              {selectedCitaPortal.observaciones && <Descriptions.Item label="Observaciones">{selectedCitaPortal.observaciones}</Descriptions.Item>}
+              {selectedCitaPortal.precio != null && <Descriptions.Item label="Precio">S/. {selectedCitaPortal.precio.toFixed(2)}</Descriptions.Item>}
+            </Descriptions>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <Button onClick={() => { setCitaDetailOpen(false); setSelectedCitaPortal(null); }}>Cerrar</Button>
+              {isPaciente && ['PROGRAMADA', 'CONFIRMADA'].includes(selectedCitaPortal.estado) && (
+                <Button danger type="primary" icon={<CloseCircleOutlined />}
+                  loading={cancelarCitaMutation.isPending}
+                  onClick={() => Modal.confirm({
+                    title: 'Cancelar Cita',
+                    content: `¿Estás seguro de cancelar la cita del ${dayjs(selectedCitaPortal.fechaHora).format('DD/MM/YYYY h:mm A')}?`,
+                    okText: 'Sí, cancelar',
+                    okButtonProps: { danger: true },
+                    cancelText: 'No, mantener',
+                    onOk: () => cancelarCitaMutation.mutate(selectedCitaPortal),
+                  })}>
+                  Cancelar Cita
+                </Button>
+              )}
             </div>
           </>
         )}

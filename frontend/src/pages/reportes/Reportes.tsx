@@ -195,15 +195,17 @@ export default function Reportes() {
 
           <Card className="glass" style={{ marginTop: 16 }} title={
             <Space><FileTextOutlined /><Text strong>Historial de Cobros</Text></Space>
-          } size="small">
-            <Table
-              dataSource={cobros.slice().sort((a, b) => new Date(b.fechaCobro || '').getTime() - new Date(a.fechaCobro || '').getTime())}
-              columns={columns}
-              rowKey="id"
-              size="small"
-              pagination={{ pageSize: 10, size: 'small' }}
-              style={{ marginTop: 8 }}
-            />
+          } size="small" styles={{ body: { padding: 0 } }}>
+            <div className="reportes-table-wrapper">
+              <Table
+                dataSource={cobros.slice().sort((a, b) => new Date(b.fechaCobro || '').getTime() - new Date(a.fechaCobro || '').getTime())}
+                columns={columns}
+                rowKey="id"
+                size="small"
+                pagination={{ pageSize: 10, size: 'small' }}
+                style={{ marginTop: 0 }}
+              />
+            </div>
           </Card>
         </>
       )}

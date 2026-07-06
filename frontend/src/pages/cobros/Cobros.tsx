@@ -1,4 +1,4 @@
-import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Tag, Space, Input as SearchInput, Typography, message, Steps, Divider } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Tag, Space, Input as SearchInput, Typography, message, Steps, Divider, Card } from 'antd';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, DollarOutlined, PrinterOutlined, WalletOutlined, CheckCircleOutlined, UserOutlined, CreditCardOutlined, HeartOutlined, CloseOutlined } from '@ant-design/icons';
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -14,7 +14,7 @@ import QRCode from 'qrcode';
 import { buildEmvcoPayload, YAPE_NUMERO, isMobileDevice, buildYapeDeepLink } from '../../utils/yape';
 
 const { Title, Text } = Typography;
-const statusColors: Record<string, string> = { PENDIENTE: '#F59E0B', PAGADO: '#00D4AA', ANULADO: '#EF4444' };
+const statusColors: Record<string, string> = { PENDIENTE: '#F59E0B', PAGADO: '#00D4AA', ANULADO: '#EF4444', PENDIENTE_VERIFICACION: '#F59E0B', VERIFICADO: '#8B5CF6', RECHAZADO: '#EF4444' };
 
 export default function Cobros() {
   const [form] = Form.useForm();
@@ -62,6 +62,21 @@ export default function Cobros() {
   const pacienteMap = new Map(pacientes?.map(p => [p.id, p]) || []);
 
   const [selectedCobros, setSelectedCobros] = useState<number[]>([]);
+  const [verifModalOpen, setVerifModalOpen] = useState(false);
+  const [verifCodigo, setVerifCodigo] = useState('');
+  const [verifCobro, setVerifCobro] = useState<Cobro | null>(null);
+  const [verifResult, setVerifResult] = useState<'idle' | 'ok' | 'fail'>('idle');
+
+  const { data: pendientesVerif, refetch: refetchPendientes } = useQuery({
+    queryKey: ['cobros-pendientes-verificacion'],
+    queryFn: async () => { const r = await api.get('/cobros/pendientes-verificacion'); return r.data as Cobro[]; },
+  });
+
+  const verifMutation = useMutation({
+    mutationFn: (params: { id: number; codigo: string }) => api.put(`/cobros/${params.id}/verificar`, { codigoVerificacion: params.codigo }),
+    onSuccess: () => { setVerifResult('ok'); refetchPendientes(); queryClient.invalidateQueries({ queryKey: ['cobros'] }); },
+    onError: () => { setVerifResult('fail'); },
+  });
 
   const { data: deudasData, refetch: refetchDeudas } = useQuery({
     queryKey: ['deudas-paciente', selectedPaciente?.id],
@@ -304,6 +319,109 @@ export default function Cobros() {
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nuevo Cobro</Button>
         </Space>
       </div>
+
+      {pendientesVerif && pendientesVerif.length > 0 && (
+        <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 16, padding: 16, marginBottom: 16, border: '1px solid #fde68a' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Space><HeartOutlined style={{ color: '#d97706' }} /><Text strong style={{ color: '#92400e', fontSize: 15 }}>Verificaciones Pendientes ({pendientesVerif.length})</Text></Space>
+          </div>
+          {pendientesVerif.map(c => {
+            const p = pacienteMap.get(c.pacienteId);
+            return (
+              <Card key={c.id} size="small" style={{ marginBottom: 8, border: '1px solid #fde68a', background: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <Text strong style={{ color: '#1a1a2e' }}>#{c.id}</Text>
+                    <Text style={{ color: '#6b7280', marginLeft: 8 }}>{p ? `${p.nombres} ${p.apellidoPaterno}` : `Paciente #${c.pacienteId}`}</Text>
+                    <br /><Text style={{ color: '#6b7280', fontSize: 12 }}>{c.descripcion || c.tipo} | S/. {c.monto.toFixed(2)} | {c.fechaCobro ? dayjs(c.fechaCobro).format('DD/MM/YYYY') : '-'}</Text>
+                    {c.codigoVerificacion && <Tag color="purple" style={{ marginLeft: 8 }}>Código: {c.codigoVerificacion}</Tag>}
+                  </div>
+                  <Button type="primary" size="small" icon={<CheckCircleOutlined />}
+                    style={{ background: '#d97706', borderColor: '#d97706' }}
+                    onClick={() => { setVerifCobro(c); setVerifCodigo(''); setVerifResult('idle'); setVerifModalOpen(true); }}>
+                    Verificar
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal title={<Text style={{ color: '#92400e', fontWeight: 600 }}>Verificar Pago</Text>}
+        open={verifModalOpen}
+        onCancel={() => { setVerifModalOpen(false); setVerifCobro(null); setVerifCodigo(''); setVerifResult('idle'); }}
+        width={440} destroyOnClose closable={verifResult === 'idle'}
+        footer={verifResult === 'idle' ? [
+          <Button key="cancel" onClick={() => { setVerifModalOpen(false); setVerifCobro(null); setVerifCodigo(''); }}>
+            Cancelar
+          </Button>,
+          <Button key="reject" danger icon={<CloseOutlined />} loading={verifMutation.isPending}
+            onClick={() => verifMutation.mutate({ id: verifCobro!.id!, codigo: '' })}>
+            Rechazar (código incorrecto)
+          </Button>,
+          <Button key="accept" type="primary" icon={<CheckCircleOutlined />}
+            style={{ background: '#059669', borderColor: '#059669' }}
+            disabled={verifCodigo.length !== 3}
+            loading={verifMutation.isPending}
+            onClick={() => verifMutation.mutate({ id: verifCobro!.id!, codigo: verifCodigo })}>
+            Aceptar Pago
+          </Button>,
+        ] : undefined}
+        styles={{ body: { padding: '24px 28px' } }}>
+        {verifResult === 'idle' && verifCobro && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <HeartOutlined style={{ fontSize: 32, color: '#d97706' }} />
+            </div>
+            <Text style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Pago #{verifCobro.id}</Text>
+            <Text style={{ display: 'block', fontSize: 24, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>S/. {verifCobro.monto.toFixed(2)}</Text>
+            <Text style={{ display: 'block', fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+              {pacienteMap.get(verifCobro.pacienteId)?.nombres} {pacienteMap.get(verifCobro.pacienteId)?.apellidoPaterno}
+            </Text>
+
+            <div style={{ background: '#fefce8', borderRadius: 12, padding: 16, border: '1px solid #fde68a' }}>
+              <Text style={{ display: 'block', fontSize: 12, color: '#92400e', marginBottom: 8 }}>
+                Pídele al paciente que te muestre el código de 3 dígitos que apareció en su app Yape al confirmar el pago. Ingresa el código para verificar.
+              </Text>
+              <Input
+                size="large" placeholder="Código Yape (3 dígitos)" maxLength={3}
+                value={verifCodigo} onChange={e => setVerifCodigo(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                style={{ textAlign: 'center', fontSize: 32, fontWeight: 700, letterSpacing: 12, fontFamily: 'monospace', border: '2px solid #e5e7eb', borderRadius: 8, maxWidth: 180, margin: '0 auto', background: '#fff', color: '#000' }}
+              />
+              <Text style={{ display: 'block', fontSize: 11, color: '#6b7280', marginTop: 8 }}>
+                Código esperado: <Tag color="purple">{verifCobro.codigoVerificacion}</Tag> — debe coincidir exactamente
+              </Text>
+            </div>
+          </div>
+        )}
+        {verifResult === 'ok' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <CheckCircleOutlined style={{ fontSize: 36, color: '#059669' }} />
+            </div>
+            <Title level={4} style={{ color: '#059669', margin: 0 }}>¡Pago verificado!</Title>
+            <Text style={{ color: '#6b7280', display: 'block', marginTop: 8 }}>La boleta se ha generado automáticamente.</Text>
+            <Button type="primary" style={{ marginTop: 16, background: '#059669', borderColor: '#059669' }}
+              onClick={() => { setVerifModalOpen(false); setVerifCobro(null); setVerifCodigo(''); setVerifResult('idle'); }}>
+              Cerrar
+            </Button>
+          </div>
+        )}
+        {verifResult === 'fail' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <CloseOutlined style={{ fontSize: 36, color: '#EF4444' }} />
+            </div>
+            <Title level={4} style={{ color: '#EF4444', margin: 0 }}>Código incorrecto</Title>
+            <Text style={{ color: '#6b7280', display: 'block', marginTop: 8 }}>El código ingresado no coincide. El pago ha sido rechazado.</Text>
+            <Button style={{ marginTop: 16 }}
+              onClick={() => { setVerifResult('idle'); setVerifCodigo(''); }}>
+              Intentar de nuevo
+            </Button>
+          </div>
+        )}
+      </Modal>
 
       <div className="glass" style={{ borderRadius: 16, overflow: 'auto' }}>
         {cobrosError ? (

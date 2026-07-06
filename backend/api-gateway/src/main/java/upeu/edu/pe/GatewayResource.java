@@ -371,6 +371,14 @@ public class GatewayResource {
         return handleResponse(buildPut(url("ms-atencion"), "citas/" + path, body, authHeader));
     }
 
+    @DELETE
+    @Path("/citas/{path:.*}")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response deleteCitasPath(@PathParam("path") String path, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildDelete(url("ms-atencion"), "citas/" + path, authHeader));
+    }
+
     public Response fallbackCitasPath(String path, String authHeader, Throwable t) {
         return Response.status(503)
             .entity("{\"error\":\"Servicio de citas no disponible\",\"type\":\"CIRCUIT_BREAKER\"}")
@@ -626,6 +634,23 @@ public class GatewayResource {
     @Fallback(fallbackMethod = "fallbackGenerico")
     public Response postCobros(byte[] body, @HeaderParam("Authorization") String authHeader) {
         return handleResponse(buildPost(url("ms-cobros"), "cobros", body, authHeader));
+    }
+
+    @PUT
+    @Path("/cobros/{path:.*}")
+    @Consumes(MediaType.WILDCARD)
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response putCobros(@PathParam("path") String path, byte[] body, @HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildPut(url("ms-cobros"), "cobros/" + path, body, authHeader));
+    }
+
+    @GET
+    @Path("/cobros/pendientes-verificacion")
+    @Retry(maxRetries = 2, delay = 200)
+    @Fallback(fallbackMethod = "fallbackGenerico")
+    public Response getCobrosPendientesVerificacion(@HeaderParam("Authorization") String authHeader) {
+        return handleResponse(buildGet(url("ms-cobros"), "cobros/pendientes-verificacion", authHeader));
     }
 
     // ============ SERVICIOS ============

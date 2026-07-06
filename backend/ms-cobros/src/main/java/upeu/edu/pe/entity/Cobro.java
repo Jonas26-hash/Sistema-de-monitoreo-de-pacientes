@@ -40,4 +40,7 @@ public class Cobro extends PanacheEntity {
 
     @Column(name = "num_documento")
     public String numDocumento;
+
+    @Column(name = "codigo_verificacion", length = 3)
+    public String codigoVerificacion;
 }

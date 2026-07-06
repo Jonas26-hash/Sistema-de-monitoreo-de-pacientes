@@ -135,11 +135,12 @@ export interface Cobro {
   tipo: string;
   referenciaId?: number;
   monto: number;
-  estado: 'PENDIENTE' | 'PAGADO' | 'ANULADO';
+  estado: 'PENDIENTE' | 'PAGADO' | 'ANULADO' | 'PENDIENTE_VERIFICACION' | 'VERIFICADO' | 'RECHAZADO';
   fechaCobro?: string;
   descripcion?: string;
   tipoComprobante?: string;
   numDocumento?: string;
+  codigoVerificacion?: string;
 }
 
 export interface Servicio {

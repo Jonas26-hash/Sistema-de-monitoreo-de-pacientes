@@ -66,12 +66,10 @@ export default function Auditoria() {
             <Select placeholder="Filtrar por acción..." allowClear style={{ width: '100%' }}
               value={accion || undefined} onChange={(v) => { setAccion(v || ''); setPage(0); }}
               suffixIcon={<FilterOutlined style={{ color: 'var(--text-muted)' }} />}>
-              <Select.Option value="LOGIN">LOGIN</Select.Option>
-              <Select.Option value="LOGOUT">LOGOUT</Select.Option>
-              <Select.Option value="CREATE">CREATE</Select.Option>
-              <Select.Option value="UPDATE">UPDATE</Select.Option>
+              <Select.Option value="GET">GET</Select.Option>
+              <Select.Option value="POST">POST</Select.Option>
+              <Select.Option value="PUT">PUT</Select.Option>
               <Select.Option value="DELETE">DELETE</Select.Option>
-              <Select.Option value="REGISTER">REGISTER</Select.Option>
             </Select>
           </Col>
           <Col xs={24} sm={8}>

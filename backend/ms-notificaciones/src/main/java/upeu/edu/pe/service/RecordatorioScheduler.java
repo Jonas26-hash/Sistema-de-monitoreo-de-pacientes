@@ -23,7 +23,7 @@ public class RecordatorioScheduler {
     @Inject
     ObjectMapper mapper;
 
-    @Scheduled(every = "30m")
+    @Scheduled(cron = "0 8 * * *")
     @Transactional
     public void verificarRecordatorios() {
         try { recordatorioCitas(); } catch (Exception e) { System.err.println("[Scheduler] Error citas: " + e.getMessage()); }

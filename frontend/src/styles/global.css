@@ -651,7 +651,111 @@ select {
     align-items: stretch;
   }
 
+  .crud-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .crud-page-header .ant-space-horizontal {
+    width: 100%;
+  }
+
+  .crud-page-header .ant-btn {
+    width: 100%;
+  }
+
   .ant-table-wrapper .ant-table-pagination.ant-pagination {
     margin: 8px 0;
+  }
+}
+
+/* Sidebar: prevent scroll-jank on mobile */
+.app-shell {
+  overflow: hidden;
+}
+
+.app-main {
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Reportes: table scroll wrapper */
+.reportes-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.reportes-table-wrapper .ant-table {
+  min-width: 500px;
+}
+
+/* Portal: pago footer responsive */
+.portal-pago-footer .ant-btn {
+  white-space: nowrap;
+}
+
+/* Portal: payment modal mobile */
+@media (max-width: 600px) {
+  .portal-pago-modal .ant-modal {
+    max-width: 100vw;
+    margin: 0;
+    top: 0;
+  }
+  .portal-pago-modal .ant-modal-content {
+    border-radius: 0;
+    min-height: 100vh;
+  }
+  .portal-pago-modal .ant-modal-body {
+    padding: 16px !important;
+  }
+  .portal-pago-modal .ant-modal-footer {
+    padding: 12px 16px;
+  }
+}
+
+/* Ensure buttons inside card bodies don't overflow */
+.ant-card-body {
+  overflow: hidden;
+}
+
+/* Perfil page: button should not overflow */
+.profile-save-btn {
+  width: 100%;
+}
+
+@media (min-width: 577px) {
+  .profile-save-btn {
+    width: auto;
+  }
+}
+
+/* Sidebar: ensure it stays fixed even during scroll */
+.app-sidebar {
+  position: fixed !important;
+  overflow-y: auto;
+}
+
+/* Citas table: make responsive columns stack nicely on mobile */
+@media (max-width: 576px) {
+  .ant-table {
+    font-size: 12px;
+  }
+}
+
+/* Perfil: stack columns on mobile */
+@media (max-width: 576px) {
+  .perfil-row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+  .perfil-row .ant-form-item {
+    width: 100% !important;
+  }
+  .perfil-actions {
+    flex-direction: column;
+  }
+  .perfil-actions .ant-btn {
+    width: 100%;
   }
 }

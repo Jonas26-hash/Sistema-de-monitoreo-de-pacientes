@@ -88,6 +88,27 @@ public class CobroService {
         }
     }
 
+    public List<Cobro> pendientesVerificacion() {
+        return Cobro.list("estado = 'PENDIENTE_VERIFICACION' ORDER BY fechaCobro DESC");
+    }
+
+    @Transactional
+    public Cobro verificar(Long id, String codigoVerificacion) {
+        Cobro cobro = buscar(id);
+        if (!"PENDIENTE_VERIFICACION".equals(cobro.estado)) {
+            throw new IllegalArgumentException("El cobro no est\u00e1 pendiente de verificaci\u00f3n");
+        }
+        if (codigoVerificacion != null && codigoVerificacion.equals(cobro.codigoVerificacion)) {
+            cobro.estado = "VERIFICADO";
+            cobro.persist();
+        } else {
+            cobro.estado = "RECHAZADO";
+            cobro.persist();
+            throw new IllegalArgumentException("C\u00f3digo de verificaci\u00f3n incorrecto");
+        }
+        return cobro;
+    }
+
     @Transactional
     public Cobro pagoUnico(String body) {
         try {
@@ -96,15 +117,17 @@ public class CobroService {
             String tipoComprobante = json.has("tipoComprobante") ? json.get("tipoComprobante").asText() : "BOLETA";
             String numDocumento = json.has("numDocumento") ? json.get("numDocumento").asText() : "";
             Double monto = json.get("monto").asDouble();
+            String codigoVerificacion = json.has("codigoVerificacion") ? json.get("codigoVerificacion").asText() : null;
 
             Cobro cobro = new Cobro();
             cobro.pacienteId = pacienteId;
             cobro.tipo = "PAGO_UNICO";
             cobro.monto = monto;
-            cobro.estado = "PAGADO";
+            cobro.estado = codigoVerificacion != null && !codigoVerificacion.isEmpty() ? "PENDIENTE_VERIFICACION" : "PAGADO";
             cobro.fechaCobro = LocalDate.now();
             cobro.tipoComprobante = tipoComprobante;
             cobro.numDocumento = numDocumento;
+            cobro.codigoVerificacion = codigoVerificacion;
             cobro.descripcion = json.has("descripcion") ? json.get("descripcion").asText() : "Pago \u00fanico";
             cobro.persist();
 
