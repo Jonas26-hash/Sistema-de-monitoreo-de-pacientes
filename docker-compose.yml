@@ -268,8 +268,8 @@ services:
       EUREKA_URL: http://registry-server:8761/eureka
       EUREKA_APP_NAME: ms-notificaciones
       JWT_PUBLIC_KEY_PATH: file:/deployments/jwt/publicKey.pem
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_USERNAME: ${SMTP_USERNAME:-ing265530@gmail.com}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-wqry uayl lplt jsrx}
     dns:
       - 8.8.8.8
       - 1.1.1.1
