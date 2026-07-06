@@ -13,9 +13,11 @@ COPY --from=builder /app/target/quarkus-app/lib/ /deployments/lib/
 COPY --from=builder /app/target/quarkus-app/*.jar /deployments/
 COPY --from=builder /app/target/quarkus-app/app/ /deployments/app/
 COPY --from=builder /app/target/quarkus-app/quarkus/ /deployments/quarkus/
+COPY entrypoint.sh /deployments/entrypoint.sh
+RUN chmod +x /deployments/entrypoint.sh
 EXPOSE 8081
 ENV QUARKUS_HTTP_HOST=0.0.0.0
 ENV QUARKUS_HTTP_PORT=8081
 ENV JAVA_OPTS_APPEND="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
-ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]
+ENTRYPOINT ["/deployments/entrypoint.sh"]
