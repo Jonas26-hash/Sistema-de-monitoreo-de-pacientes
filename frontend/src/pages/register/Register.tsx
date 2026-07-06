@@ -11,6 +11,7 @@ const { Title, Text } = Typography;
 export default function Register() {
   const [form] = Form.useForm();
   const [reniecLoading, setReniecLoading] = useState(false);
+  const [reniecError, setReniecError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [step, setStep] = useState(0);
@@ -46,8 +47,9 @@ export default function Register() {
   };
 
   const handleDniChange = async (value: string) => {
-    if (value.length !== 8) return;
+    if (value.length !== 8) { setReniecError(''); return; }
     setReniecLoading(true);
+    setReniecError('');
     try {
       const res = await api.get(`/pacientes/reniec/dni/${value}`);
       if (res.data?.names) {
@@ -55,8 +57,11 @@ export default function Register() {
           nombres: res.data.names,
           apellidos: `${res.data.paternalLastName} ${res.data.maternalLastName ?? ''}`.trim(),
         });
+      } else {
+        setReniecError('DNI no encontrado en RENIEC. Completa los datos manualmente.');
       }
     } catch {
+      setReniecError('Error al consultar RENIEC. Completa los datos manualmente.');
     } finally {
       setReniecLoading(false);
     }
@@ -107,8 +112,8 @@ export default function Register() {
             <Form form={form} layout="vertical" onFinish={handleSubmitData} size="large" requiredMark={false}>
               {step === 0 && (
                 <>
-                  <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]}>
-                    <Input prefix={<IdcardOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} style={{ height: 48, borderRadius: 10 }} />
+                  <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} help={reniecError} validateStatus={reniecError ? 'error' : undefined}>
+                    <Input prefix={<IdcardOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="12345678" maxLength={8} onChange={e => { setReniecError(''); handleDniChange(e.target.value); }} suffix={reniecLoading ? <SearchOutlined /> : null} style={{ height: 48, borderRadius: 10 }} />
                   </Form.Item>
                   <Form.Item name="nombres" label="Nombres" rules={[{ required: true, message: 'Ingresa tus nombres' }]}>
                     <Input prefix={<UserOutlined style={{ color: 'var(--text-muted)' }} />} placeholder="Tus nombres" style={{ height: 48, borderRadius: 10 }} />

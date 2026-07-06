@@ -25,6 +25,7 @@ export default function Usuarios() {
   });
 
   const [reniecLoading, setReniecLoading] = useState(false);
+  const [reniecError, setReniecError] = useState('');
   const [successModal, setSuccessModal] = useState<{ open: boolean; title: string; subtitle?: string; lottieSrc?: string }>({ open: false, title: '' });
   const [creatingWorker, setCreatingWorker] = useState(false);
   const queryClient = useQueryClient();
@@ -123,8 +124,9 @@ export default function Usuarios() {
   ];
 
   const handleDniChange = async (value: string) => {
-    if (value.length !== 8) return;
+    if (value.length !== 8) { setReniecError(''); return; }
     setReniecLoading(true);
+    setReniecError('');
     try {
       const res = await api.get(`/pacientes/reniec/dni/${value}`);
       if (res.data?.names) {
@@ -132,8 +134,11 @@ export default function Usuarios() {
           nombres: res.data.names,
           apellidos: `${res.data.paternalLastName} ${res.data.maternalLastName ?? ''}`.trim(),
         });
+      } else {
+        setReniecError('DNI no encontrado en RENIEC. Completa los datos manualmente.');
       }
     } catch {
+      setReniecError('Error al consultar RENIEC. Completa los datos manualmente.');
     } finally {
       setReniecLoading(false);
     }
@@ -225,8 +230,8 @@ export default function Usuarios() {
         <Form form={form} layout="vertical" onFinish={editing ? handleSave : handleCreateUser} initialValues={editing || { rol: 'DOCTOR' }} preserve={false}
           style={{ width: '100%' }}>
           <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }}>
-              <Input placeholder="12345678" maxLength={8} onChange={e => handleDniChange(e.target.value)} suffix={reniecLoading ? <SearchOutlined /> : null} />
+            <Form.Item name="dni" label="DNI" rules={[{ pattern: /^\d{8}$/, message: 'DNI debe tener exactamente 8 dígitos numéricos' }]} style={{ width: '50%' }} help={reniecError} validateStatus={reniecError ? 'error' : undefined}>
+              <Input placeholder="12345678" maxLength={8} onChange={e => { setReniecError(''); handleDniChange(e.target.value); }} suffix={reniecLoading ? <SearchOutlined /> : null} />
             </Form.Item>
             <Form.Item name="telefono" label="Teléfono" style={{ width: '50%' }}>
               <PhoneInput />

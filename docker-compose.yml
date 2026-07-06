@@ -144,6 +144,7 @@ services:
       EUREKA_APP_NAME: ms-pacientes
       JWT_SIGN_KEY_PATH: file:/deployments/jwt/privateKey.pem
       JWT_PUBLIC_KEY_PATH: file:/deployments/jwt/publicKey.pem
+      RENIEC_API_TOKEN: 8c9aea9b24d71898ee09c3e7d4e84c85
     volumes:
       - jwt-keys:/deployments/jwt
     depends_on:
