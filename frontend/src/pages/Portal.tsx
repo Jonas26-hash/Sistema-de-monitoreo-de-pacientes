@@ -646,7 +646,7 @@ export default function Portal() {
                     </Text>
                     {qrDataUrl && (
                       <div style={{ padding: 8, background: '#fff', borderRadius: 12, display: 'inline-block', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                        <img src={qrDataUrl} alt="QR Yape" style={{ width: 140, height: 140, borderRadius: 8, display: 'block' }} />
+                        <img src="/yape QR.jpeg" alt="QR Yape" style={{ width: 140, height: 140, borderRadius: 8, display: 'block' }} />
                       </div>
                     )}
                   </div>
@@ -671,7 +671,7 @@ export default function Portal() {
                   <Text style={{ display: 'block', fontSize: 36, fontWeight: 700, color: '#059669', marginBottom: 20 }}>S/. {montoFinal().toFixed(2)}</Text>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                     <div style={{ padding: 8, background: '#fff', borderRadius: 16, boxShadow: '0 4px 16px rgba(0,212,170,0.15)', border: '2px solid #00D4AA' }}>
-                      <img src={qrDataUrl || undefined} alt="QR Yape" style={{ width: 180, height: 180, borderRadius: 8, display: 'block' }} />
+                      <img src="/yape QR.jpeg" alt="QR Yape" style={{ width: 180, height: 180, borderRadius: 8, display: 'block' }} />
                     </div>
                   </div>
                   <div style={{ background: '#d1fae5', borderRadius: 12, padding: 16, maxWidth: 320, margin: '0 auto' }}>

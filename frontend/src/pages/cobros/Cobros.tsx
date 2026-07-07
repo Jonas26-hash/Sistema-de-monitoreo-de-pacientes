@@ -675,7 +675,7 @@ export default function Cobros() {
                     </Button>
                     {qrDataUrl && (
                       <div style={{ marginTop: 8 }}>
-                        <img src={qrDataUrl} alt="QR Yape" style={{ width: 140, height: 140, borderRadius: 8 }} />
+                        <img src="/yape QR.jpeg" alt="QR Yape" style={{ width: 140, height: 140, borderRadius: 8 }} />
                       </div>
                     )}
                   </div>
@@ -706,7 +706,7 @@ export default function Cobros() {
 
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                     <div style={{ padding: 8, background: '#fff', borderRadius: 16, boxShadow: '0 4px 16px rgba(0,212,170,0.15)', border: '2px solid #00D4AA' }}>
-                      <img src={qrDataUrl || undefined}
+                      <img src="/yape QR.jpeg"
                         alt="QR Yape" style={{ width: 180, height: 180, borderRadius: 8, display: 'block' }} />
                     </div>
                   </div>
